@@ -1,4 +1,4 @@
-##New improved tracker, code coming soon.
+#New improved tracker, code coming soon.
 
 ##Published papers:
 ### Learning Object-Uncertainty Policy for Visual Tracking (OUPT)

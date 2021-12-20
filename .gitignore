@@ -27,15 +27,10 @@
 /pytracking/analysis/analyze_results.py
 /pytracking/evaluation/img_result/
 /pytracking/experiments/
-/pytracking/parameter/oupt/
-/pytracking/tracker/oupt/
-/pytracking/parameter/atomS/
-/pytracking/parameter/ecoS/
+
 /pytracking/parameter/endimp/
 /pytracking/parameter/fudimp/
 /pytracking/parameter/rvt/
-/pytracking/tracker/atomS/
-/pytracking/tracker/ecoS/
 /pytracking/tracker/endimp/
 /pytracking/tracker/fudimp/
 /pytracking/tracker/rvt/

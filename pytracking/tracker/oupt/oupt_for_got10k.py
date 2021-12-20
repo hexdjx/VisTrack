@@ -1,19 +1,116 @@
 from pytracking.tracker.base import BaseTracker
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import math
 import time
 from pytracking import dcf, TensorList
 from pytracking.features.preprocessing import numpy_to_torch
 from pytracking.utils.plotting import show_tensor, plot_graph
-from pytracking.features.preprocessing import sample_patch_multiscale, sample_patch_transformed
+from pytracking.features.preprocessing import sample_patch_multiscale, sample_patch_transformed, sample_target_patch
 from pytracking.features import augmentation
 import ltr.data.bounding_box_utils as bbutils
 from ltr.models.target_classifier.initializer import FilterInitializerZero
 from ltr.models.layers import activation
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
 
-class DiMP(BaseTracker):
+def mesh_score(s):
+    score = torch.squeeze(s.cpu()).numpy()
+
+    # plt.imshow(s.astype(np.int))
+    # plt.show()
+    [x, y] = np.shape(score)
+    fig = plt.figure(10)
+    ax = Axes3D(fig)
+    X = np.arange(0, x)
+    Y = np.arange(0, y)
+    X, Y = np.meshgrid(X, Y)
+    Z = score
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', linewidth=0,
+                           antialiased=False)  # rainbow coolwarm
+    # ax.contour(X, Y, Z, zdir='z', offset=-1, cmap=plt.get_cmap('rainbow'))
+    # Add a color bar which maps values to colors.
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+    ax.set_zlim(-0.2, 1.2)
+    ax.set_zlabel('Score')
+    # plt.show()
+    plt.savefig('score_map.png', format='png', dpi=300)
+
+class FeatureFuse(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(128 + 256, 256, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(256)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.relu = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(256 * 9 * 9, 512)
+
+        # Init weights
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data, mode='fan_in')
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                # In earlier versions batch norm parameters was initialized with default initialization,
+                # which changed in pytorch 1.2. In 1.1 and earlier the weight was set to U(0,1).
+                # So we use the same initialization here.
+                # m.weight.data.fill_(1)
+                m.weight.data.uniform_()
+                m.bias.data.zero_()
+
+    def forward(self, feat, target_layer):
+        if len(target_layer) == 1:
+            feat1 = feat[target_layer[0]]
+            out = feat1.view(feat1.shape[0], -1)
+            return out
+
+        if len(target_layer) == 2:
+            feat1, feat2 = feat[target_layer[0]], feat[target_layer[1]]
+            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+            feat3 = torch.cat([feat1, feat2], dim=1)
+            out = feat3.view(feat3.shape[0], -1)
+            return out
+
+        if len(target_layer) == 3:
+            feat1, feat2, feat3 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]]
+            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+            feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat3.shape[-2:] != feat1.shape[-2:] else feat3
+            feat4 = torch.cat([feat1, feat2, feat3], dim=1)
+            out = feat4.view(feat4.shape[0], -1)
+            return out
+
+        if len(target_layer) == 4:
+            feat1, feat2, feat3, feat4 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]], feat[target_layer[3]]
+            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+            feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat3.shape[-2:] != feat1.shape[-2:] else feat3
+            feat4 = F.interpolate(feat4, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+                if feat4.shape[-2:] != feat1.shape[-2:] else feat4
+            feat5 = torch.cat([feat1, feat2, feat3, feat4], dim=1)
+            out = feat5.view(feat5.shape[0], -1)
+            return out
+
+        # feat1, feat2 = feat['layer2'], feat['layer3']
+        # feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+        # feat4 = torch.cat([feat1, feat2], dim=1)
+        # # feat4 = self.bn1(self.conv1(feat3))
+        # # feat5 = self.maxpool(feat4)
+        # # feat6 = self.avgpool(feat5)
+        # out = feat4.view(feat4.shape[0], -1)
+        # out = self.fc(feat7)
+        # return out
+
+
+class OUPT(BaseTracker):
     multiobj_mode = 'parallel'
 
     def initialize_features(self):
@@ -21,7 +118,8 @@ class DiMP(BaseTracker):
             self.params.net.initialize()
         self.features_initialized = True
 
-    def initialize(self, image, info: dict) -> dict:
+    # def initialize(self, image, info: dict) -> dict:
+    def initialize(self, image, state):
         # Initialize some stuff
         self.frame_num = 1
         if not self.params.has('device'):
@@ -40,14 +138,14 @@ class DiMP(BaseTracker):
         im = numpy_to_torch(image)
 
         # Get target position and size
-        state = info['init_bbox']
+        # state = info['init_bbox']
         self.pos = torch.Tensor([state[1] + (state[3] - 1) / 2, state[0] + (state[2] - 1) / 2])
         self.target_sz = torch.Tensor([state[3], state[2]])
 
         # Get object id
-        self.object_id = info.get('object_ids', [None])[0]
-        self.id_str = '' if self.object_id is None else ' {}'.format(self.object_id)
-
+        # self.object_id = info.get('object_ids', [None])[0]
+        # self.id_str = '' if self.object_id is None else ' {}'.format(self.object_id)
+        self.id_str = ''
         # Set sizes
         self.image_sz = torch.Tensor([im.shape[2], im.shape[3]])
         sz = self.params.image_sample_size
@@ -76,6 +174,14 @@ class DiMP(BaseTracker):
         self.min_scale_factor = torch.max(10 / self.base_target_sz)
         self.max_scale_factor = torch.min(self.image_sz / self.base_target_sz)
 
+        ####################################################
+        # my add
+        init_target_feat = self.generate_target_feat(im)
+        f_model = FeatureFuse().cuda()
+        init_target_feat = f_model(init_target_feat, self.params.target_layer)
+        self.init_target_memory(TensorList([init_target_feat]))
+        ###############################################
+
         # Extract and transform sample
         init_backbone_feat = self.generate_init_samples(im)
 
@@ -89,7 +195,8 @@ class DiMP(BaseTracker):
         out = {'time': time.time() - tic}
         return out
 
-    def track(self, image, info: dict = None) -> dict:
+    # def track(self, image, info: dict = None) -> dict:
+    def track(self, image):
         self.debug_info = {}
 
         self.frame_num += 1
@@ -101,7 +208,7 @@ class DiMP(BaseTracker):
         # ------- LOCALIZATION ------- #
 
         # Extract backbone features
-        backbone_feat, sample_coords, im_patches = self.extract_backbone_features(im, self.get_centered_sample_pos(),
+        backbone_feat, sample_coords, _ = self.extract_backbone_features(im, self.get_centered_sample_pos(),
                                                                                   self.target_scale * self.params.scale_factors,
                                                                                   self.img_sample_sz)
         # Extract classification features
@@ -112,24 +219,79 @@ class DiMP(BaseTracker):
 
         # Compute classification scores
         scores_raw = self.classify_target(test_x)
-
+        # mesh_score(scores_raw)
         # Localize the target
         translation_vec, scale_ind, s, flag = self.localize_target(scores_raw, sample_pos, sample_scales)
         new_pos = sample_pos[scale_ind, :] + translation_vec
 
+        # flag value: not_found uncertain hard_negative normal
+
         # Update position and scale
         if flag != 'not_found':
             if self.params.get('use_iou_net', True):
-                update_scale_flag = self.params.get('update_scale_when_uncertain', True) or flag != 'uncertain'
+                # update_scale_flag = self.params.get('update_scale_when_uncertain', True) or flag != 'uncertain'
                 if self.params.get('use_classifier', True):
                     self.update_state(new_pos)
+
+                # if self.params.before_scale:
+                #         ##############################################################
+                #         # my add
+                #         next_target_feat = self.generate_target_feat(im)
+                #         f_model = FeatureFuse().cuda()
+                #         next_target_feat = f_model(next_target_feat, self.params.target_layer)
+                #         target_num = min(self.num_stored_targets[0], self.params.target_memory_size)
+                #         cs = torch.zeros([target_num])
+                #         for i in range(target_num):
+                #             target_feat = self.target_set[0][i, ...]
+                #             cs[i] = torch.cosine_similarity(target_feat, next_target_feat, dim=1)
+                #
+                #         threshold = self.params.cs_threshold * cs.mean()
+                #         cs_ratio = torch.true_divide(sum(cs > threshold), len(cs))
+                #         if self.params.first_frame_cs:
+                #             c_flag = (cs_ratio > self.params.cs_sum_threshold and cs[0] > 0.5)
+                #         else:
+                #             c_flag = (cs_ratio > self.params.cs_sum_threshold)
+                #
+                #         if c_flag:
+                #             self.update_target_memory(TensorList([next_target_feat]))
+                #         else:
+                #             flag = 'uncertain'
+
+                update_scale_flag = self.params.get('update_scale_when_uncertain', True) or flag != 'uncertain'
+
                 self.refine_target_box(backbone_feat, sample_pos[scale_ind, :], sample_scales[scale_ind], scale_ind,
                                        update_scale_flag)
             elif self.params.get('use_classifier', True):
                 self.update_state(new_pos, sample_scales[scale_ind])
 
-        # ------- UPDATE ------- #
+            # if self.params.after_scale:
+                ##############################################################
+                # my add
+            next_target_feat = self.generate_target_feat(im)
+            f_model = FeatureFuse().cuda()
+            next_target_feat = f_model(next_target_feat, self.params.target_layer)
+            target_num = min(self.num_stored_targets[0], self.params.target_memory_size)
+            cs = torch.zeros([target_num])
+            for i in range(target_num):
+                target_feat = self.target_set[0][i, ...]
+                cs[i] = torch.cosine_similarity(target_feat, next_target_feat, dim=1)
 
+            threshold = self.params.cs_threshold * cs.mean()
+            cs_ratio = torch.true_divide(sum(cs > threshold), len(cs))
+
+            first_tr = getattr(self.params, 'first_tr', 0.5)
+
+            # if self.params.first_frame_cs:
+            c_flag = (cs_ratio > self.params.cs_sum_threshold and cs[0] > first_tr)
+            # else:
+            #     c_flag = (cs_ratio > self.params.cs_sum_threshold)
+
+            if c_flag:
+                self.update_target_memory(TensorList([next_target_feat]))
+            else:
+                flag = 'uncertain'
+
+        # ------- UPDATE ------- #
         update_flag = flag not in ['not_found', 'uncertain']
         hard_negative = (flag == 'hard_negative')
         learning_rate = self.params.get('hard_negative_learning_rate', None) if hard_negative else None
@@ -171,8 +333,10 @@ class DiMP(BaseTracker):
         else:
             output_state = new_state.tolist()
 
-        out = {'target_bbox': output_state}
-        return out
+        # out = {'target_bbox': output_state}
+        # return out
+
+        return new_state.tolist()
 
     def get_sample_location(self, sample_coord):
         """Get the location of the extracted sample."""
@@ -271,8 +435,9 @@ class DiMP(BaseTracker):
         tneigh_left = max(round(max_disp1[1].item() - target_neigh_sz[1].item() / 2), 0)
         tneigh_right = min(round(max_disp1[1].item() + target_neigh_sz[1].item() / 2 + 1), sz[1])
         scores_masked = scores_hn[scale_ind:scale_ind + 1, ...].clone()
+        # imshow_s(scores_masked)
         scores_masked[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right] = 0
-
+        # imshow_s(scores_masked)
         # Find new maximum
         max_score2, max_disp2 = dcf.max2d(scores_masked)
         max_disp2 = max_disp2.float().cpu().view(-1)
@@ -287,6 +452,7 @@ class DiMP(BaseTracker):
             disp_norm2 = torch.sqrt(torch.sum((target_disp2 - prev_target_vec) ** 2))
             disp_threshold = self.params.dispalcement_scale * math.sqrt(sz[0] * sz[1]) / 2
 
+            # too close and far: uncertain, others: hard_negative
             if disp_norm2 > disp_threshold and disp_norm1 < disp_threshold:
                 return translation_vec1, scale_ind, scores_hn, 'hard_negative'
             if disp_norm2 < disp_threshold and disp_norm1 > disp_threshold:
@@ -325,6 +491,17 @@ class DiMP(BaseTracker):
     def get_iou_modulation(self, iou_backbone_feat, target_boxes):
         with torch.no_grad():
             return self.net.bb_regressor.get_modulation(iou_backbone_feat, target_boxes)
+
+    #############################################################
+    # my add
+    def generate_target_feat(self, im: torch.Tensor):
+        t_sz = self.params.image_target_size
+        t_sz = torch.Tensor([t_sz, t_sz] if isinstance(t_sz, int) else t_sz)
+        target_patch, _ = sample_target_patch(im, self.pos.round(), self.target_sz, t_sz)
+        # Extract initial backbone features
+        with torch.no_grad():
+            target_feat = self.net.extract_backbone(target_patch)
+        return target_feat
 
     def generate_init_samples(self, im: torch.Tensor) -> TensorList:
         """Perform data augmentation to generate initial training samples."""
@@ -399,6 +576,7 @@ class DiMP(BaseTracker):
         im_patches = sample_patch_transformed(im, self.init_sample_pos, self.init_sample_scale, aug_expansion_sz,
                                               self.transforms)
 
+
         # Extract initial backbone features
         with torch.no_grad():
             init_backbone_feat = self.net.extract_backbone(im_patches)
@@ -416,6 +594,101 @@ class DiMP(BaseTracker):
         self.target_boxes = init_target_boxes.new_zeros(self.params.sample_memory_size, 4)
         self.target_boxes[:init_target_boxes.shape[0], :] = init_target_boxes
         return init_target_boxes
+
+    ##############################################################
+    # my add
+    def init_target_memory(self, target_x: TensorList):
+        # Initialize first-frame target samples
+        self.num_init_targets = target_x.size(0)
+        self.num_stored_targets = self.num_init_targets.copy()
+
+        if self.params.target_repalce_method == 'min_weight':
+            init_target_weights = TensorList([x.new_ones(1) / x.shape[0] for x in target_x])
+
+            # Sample counters and weights for spatial
+            self.prev_target_replace_ind = [None] * len(self.num_stored_targets)
+            self.target_weights = TensorList([x.new_zeros(self.params.target_memory_size) for x in target_x])
+            for sw, init_sw, num in zip(self.target_weights, init_target_weights, self.num_init_targets):
+                sw[:num] = init_sw
+
+        # Initialize memory
+        self.target_set = TensorList(
+            [x.new_zeros(self.params.target_memory_size, x.shape[0], x.shape[1]) for x in target_x])
+
+        for ts, x in zip(self.target_set, target_x):
+            ts[:x.shape[0], ...] = x
+
+    def update_target_memory(self, target_x: TensorList, learning_rate=None):
+
+        if self.params.target_repalce_method == 'first_in_first_out':
+            if self.num_stored_targets[0] < self.params.target_memory_size:
+                # Update sample and label memory
+                for train_samp, x, ind in zip(self.target_set, target_x, self.num_stored_targets):
+                    train_samp[ind:ind + 1, ...] = x
+
+                self.num_stored_targets += 1
+            else:
+                for train_samp, x, ind in zip(self.target_set, target_x, self.num_stored_targets):
+                    ind = ind % (self.params.target_memory_size - 1)
+                    train_samp[ind + 1, ...] = x
+                    self.num_stored_targets += 1
+
+        if self.params.target_repalce_method == 'min_weight':
+            # Update weights and get replace ind
+            replace_ind = self.update_target_weights(self.target_weights, self.prev_target_replace_ind,
+                                                     self.num_stored_targets, self.num_init_targets, learning_rate)
+            self.prev_target_replace_ind = replace_ind
+
+            # Update sample and label memory
+            for train_samp, x, ind in zip(self.target_set, target_x, replace_ind):
+                train_samp[ind:ind + 1, ...] = x
+
+            self.num_stored_samples += 1
+
+    def update_target_weights(self, target_weights, prev_replace_ind, num_stored_targets, num_init_targets,
+                              learning_rate=None):
+        # Update weights and get index to replace
+        replace_ind = []
+        for sw, prev_ind, num_samp, num_init in zip(target_weights, prev_replace_ind, num_stored_targets,
+                                                    num_init_targets):
+            lr = learning_rate
+            if lr is None:
+                lr = self.params.learning_rate
+
+            init_samp_weight = self.params.get('init_samples_minimum_weight', None)
+            if init_samp_weight == 0:
+                init_samp_weight = None
+            s_ind = 0 if init_samp_weight is None else num_init
+
+            if num_samp == 0 or lr == 1:
+                sw[:] = 0
+                sw[0] = 1
+                r_ind = 0
+            else:
+                # Get index to replace
+                if num_samp < sw.shape[0]:
+                    r_ind = num_samp
+                else:
+                    _, r_ind = torch.min(sw[s_ind:], 0)
+                    r_ind = r_ind.item() + s_ind
+
+                # Update weights
+                if prev_ind is None:
+                    sw /= 1 - lr
+                    sw[r_ind] = lr
+                else:
+                    sw[r_ind] = sw[prev_ind] / (1 - lr)
+
+            sw /= sw.sum()
+            if init_samp_weight is not None and sw[:num_init].sum() < init_samp_weight:
+                sw /= init_samp_weight + sw[num_init:].sum()
+                sw[:num_init] = init_samp_weight / num_init
+
+            replace_ind.append(r_ind)
+
+        return replace_ind
+
+    ###################################################################################
 
     def init_memory(self, train_x: TensorList):
         # Initialize first-frame spatial training samples

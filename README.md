@@ -1,6 +1,6 @@
-##New improved tracker, code coming soon.
+# New improved tracker, code coming soon.
 
-##Published papers:
+## Published papers:
 ### Learning Object-Uncertainty Policy for Visual Tracking (OUPT)
 **Please cite:  
 [Xuedong He, Calvin Yu-Chian Chen. Learning Object-Uncertainty Policy for Visual Tracking[J]. Information Sciences, 2022, 582: 60-72.](https://doi.org/10.1016/j.ins.2021.09.002)

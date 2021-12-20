@@ -4,8 +4,6 @@ import numpy as np
 import os
 import sys
 import argparse
-import importlib
-import pdb
 
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:
@@ -21,6 +19,7 @@ parser.add_argument('--debug', type=int, default=0, help='Debug level.')
 args = parser.parse_args()
 
 TrTracker = Tracker(args.tracker_name, args.tracker_param, args.run_id)
+
 
 class GOT_Tracker(GOT_Tracker):
     def __init__(self):
@@ -42,7 +41,8 @@ if __name__ == '__main__':
     tracker = GOT_Tracker()
 
     # run experiments on GOT-10k (validation subset)
-    experiment = ExperimentGOT10k('/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/GOT-10k', subset='test')  # test val
+    experiment = ExperimentGOT10k('/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/GOT-10k',
+                                  subset='test')  # test val
     experiment.run(tracker, visualize=False)
 
     # report performance

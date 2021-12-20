@@ -3,3 +3,9 @@
 /ltr/
 /pytracking/
 /pysot-toolkit/
+/ltr/models/utils.py
+
+/ltr/actors/fusionnet.py
+/ltr/actors/verifynet.py
+
+/ltr/dataset/tmp/

@@ -27,8 +27,6 @@
 /pytracking/analysis/analyze_results.py
 /pytracking/evaluation/img_result/
 /pytracking/experiments/
-/pytracking/parameter/oupt/
-/pytracking/tracker/oupt/
 
 /pytracking/parameter/endimp/
 /pytracking/parameter/fudimp/

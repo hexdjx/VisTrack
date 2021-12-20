@@ -172,7 +172,7 @@ def sample_patch_multiscale(im, pos, scales, image_sz, mode: str = 'replicate', 
     return im_patches, patch_coords
 
 
-##############################
+############################################################
 # my add
 def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Tensor, output_sz: torch.Tensor = None,
                         pad_mode: str = 'replicate', is_mask=False):
@@ -211,3 +211,4 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
     # im_save(im_patch, 'resize_target_patch')
 
     return im_patch, patch_coord
+############################################################

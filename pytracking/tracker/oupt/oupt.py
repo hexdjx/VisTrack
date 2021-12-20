@@ -13,102 +13,44 @@ import ltr.data.bounding_box_utils as bbutils
 from ltr.models.target_classifier.initializer import FilterInitializerZero
 from ltr.models.layers import activation
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
 
-def mesh_score(s):
-    score = torch.squeeze(s.cpu()).numpy()
+# Fusion of different feature layers
+def featfuse(feat, target_layer):
+    if len(target_layer) == 1:
+        feat1 = feat[target_layer[0]]
+        out = feat1.view(feat1.shape[0], -1)
+        return out
 
-    # plt.imshow(s.astype(np.int))
-    # plt.show()
-    [x, y] = np.shape(score)
-    fig = plt.figure(10)
-    ax = Axes3D(fig)
-    X = np.arange(0, x)
-    Y = np.arange(0, y)
-    X, Y = np.meshgrid(X, Y)
-    Z = score
-    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', linewidth=0,
-                           antialiased=False)  # rainbow coolwarm
-    # ax.contour(X, Y, Z, zdir='z', offset=-1, cmap=plt.get_cmap('rainbow'))
-    # Add a color bar which maps values to colors.
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
-    # ax.set_zlim(-0.2, 1.2)
-    # ax.set_zlabel('Score')
-    plt.axis('off')
-    # plt.show()
-    plt.savefig('score_map.png', format='png', dpi=300)
+    if len(target_layer) == 2:
+        feat1, feat2 = feat[target_layer[0]], feat[target_layer[1]]
+        feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+        feat3 = torch.cat([feat1, feat2], dim=1)
+        out = feat3.view(feat3.shape[0], -1)
+        return out
 
-class FeatureFuse(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(128 + 256, 256, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(256)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(256 * 9 * 9, 512)
+    if len(target_layer) == 3:
+        feat1, feat2, feat3 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]]
+        feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+        feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat3.shape[-2:] != feat1.shape[-2:] else feat3
+        feat4 = torch.cat([feat1, feat2, feat3], dim=1)
+        out = feat4.view(feat4.shape[0], -1)
+        return out
 
-        # Init weights
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data, mode='fan_in')
-                if m.bias is not None:
-                    m.bias.data.zero_()
-            elif isinstance(m, nn.BatchNorm2d):
-                # In earlier versions batch norm parameters was initialized with default initialization,
-                # which changed in pytorch 1.2. In 1.1 and earlier the weight was set to U(0,1).
-                # So we use the same initialization here.
-                # m.weight.data.fill_(1)
-                m.weight.data.uniform_()
-                m.bias.data.zero_()
-
-    def forward(self, feat, target_layer):
-        if len(target_layer) == 1:
-            feat1 = feat[target_layer[0]]
-            out = feat1.view(feat1.shape[0], -1)
-            return out
-
-        if len(target_layer) == 2:
-            feat1, feat2 = feat[target_layer[0]], feat[target_layer[1]]
-            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
-            feat3 = torch.cat([feat1, feat2], dim=1)
-            out = feat3.view(feat3.shape[0], -1)
-            return out
-
-        if len(target_layer) == 3:
-            feat1, feat2, feat3 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]]
-            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
-            feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat3.shape[-2:] != feat1.shape[-2:] else feat3
-            feat4 = torch.cat([feat1, feat2, feat3], dim=1)
-            out = feat4.view(feat4.shape[0], -1)
-            return out
-
-        if len(target_layer) == 4:
-            feat1, feat2, feat3, feat4 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]], feat[target_layer[3]]
-            feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat2.shape[-2:] != feat1.shape[-2:] else feat2
-            feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat3.shape[-2:] != feat1.shape[-2:] else feat3
-            feat4 = F.interpolate(feat4, feat1.shape[-2:], mode='bilinear', align_corners=False) \
-                if feat4.shape[-2:] != feat1.shape[-2:] else feat4
-            feat5 = torch.cat([feat1, feat2, feat3, feat4], dim=1)
-            out = feat5.view(feat5.shape[0], -1)
-            return out
-
-        # feat1, feat2 = feat['layer2'], feat['layer3']
-        # feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) if feat2.shape[-2:] != feat1.shape[-2:] else feat2
-        # feat4 = torch.cat([feat1, feat2], dim=1)
-        # # feat4 = self.bn1(self.conv1(feat3))
-        # # feat5 = self.maxpool(feat4)
-        # # feat6 = self.avgpool(feat5)
-        # out = feat4.view(feat4.shape[0], -1)
-        # out = self.fc(feat7)
-        # return out
+    if len(target_layer) == 4:
+        feat1, feat2, feat3, feat4 = feat[target_layer[0]], feat[target_layer[1]], feat[target_layer[2]], feat[
+            target_layer[3]]
+        feat2 = F.interpolate(feat2, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat2.shape[-2:] != feat1.shape[-2:] else feat2
+        feat3 = F.interpolate(feat3, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat3.shape[-2:] != feat1.shape[-2:] else feat3
+        feat4 = F.interpolate(feat4, feat1.shape[-2:], mode='bilinear', align_corners=False) \
+            if feat4.shape[-2:] != feat1.shape[-2:] else feat4
+        feat5 = torch.cat([feat1, feat2, feat3, feat4], dim=1)
+        out = feat5.view(feat5.shape[0], -1)
+        return out
 
 
 class OUPT(BaseTracker):
@@ -176,8 +118,7 @@ class OUPT(BaseTracker):
         ####################################################
         # my add
         init_target_feat = self.generate_target_feat(im)
-        f_model = FeatureFuse().cuda()
-        init_target_feat = f_model(init_target_feat, self.params.target_layer)
+        init_target_feat = featfuse(init_target_feat, self.params.target_layer)
         self.init_target_memory(TensorList([init_target_feat]))
         ###############################################
 
@@ -207,8 +148,8 @@ class OUPT(BaseTracker):
 
         # Extract backbone features
         backbone_feat, sample_coords, _ = self.extract_backbone_features(im, self.get_centered_sample_pos(),
-                                                                                  self.target_scale * self.params.scale_factors,
-                                                                                  self.img_sample_sz)
+                                                                         self.target_scale * self.params.scale_factors,
+                                                                         self.img_sample_sz)
         # Extract classification features
         test_x = self.get_classification_features(backbone_feat)
 
@@ -217,7 +158,7 @@ class OUPT(BaseTracker):
 
         # Compute classification scores
         scores_raw = self.classify_target(test_x)
-        mesh_score(scores_raw)
+
         # Localize the target
         translation_vec, scale_ind, s, flag = self.localize_target(scores_raw, sample_pos, sample_scales)
         new_pos = sample_pos[scale_ind, :] + translation_vec
@@ -237,12 +178,10 @@ class OUPT(BaseTracker):
             elif self.params.get('use_classifier', True):
                 self.update_state(new_pos, sample_scales[scale_ind])
 
-            # if self.params.after_scale:
-                ##############################################################
-                # my add
+            ##############################################################
+            # my add
             next_target_feat = self.generate_target_feat(im)
-            f_model = FeatureFuse().cuda()
-            next_target_feat = f_model(next_target_feat, self.params.target_layer)
+            next_target_feat = featfuse(next_target_feat, self.params.target_layer)
             target_num = min(self.num_stored_targets[0], self.params.target_memory_size)
             cs = torch.zeros([target_num])
             for i in range(target_num):
@@ -399,7 +338,7 @@ class OUPT(BaseTracker):
 
         # Mask out target neighborhood
         target_neigh_sz = self.params.target_neighborhood_scale * (self.target_sz / sample_scale) * (
-                    output_sz / self.img_support_sz)
+                output_sz / self.img_support_sz)
 
         tneigh_top = max(round(max_disp1[0].item() - target_neigh_sz[0].item() / 2), 0)
         tneigh_bottom = min(round(max_disp1[0].item() + target_neigh_sz[0].item() / 2 + 1), sz[0])
@@ -473,6 +412,7 @@ class OUPT(BaseTracker):
         with torch.no_grad():
             target_feat = self.net.extract_backbone(target_patch)
         return target_feat
+
     #################################################################
 
     def generate_init_samples(self, im: torch.Tensor) -> TensorList:
@@ -515,7 +455,7 @@ class OUPT(BaseTracker):
         random_shift_factor = self.params.get('random_shift_factor', 0)
         if random_shift_factor > 0:
             get_rand_shift = lambda: (
-                        (torch.rand(2) - 0.5) * self.img_sample_sz * random_shift_factor + global_shift).long().tolist()
+                    (torch.rand(2) - 0.5) * self.img_sample_sz * random_shift_factor + global_shift).long().tolist()
 
         # Always put identity transformation first, since it is the unaugmented sample that is always used
         self.transforms = [augmentation.Identity(aug_output_sz, global_shift.long().tolist())]
@@ -547,7 +487,6 @@ class OUPT(BaseTracker):
         # Extract augmented image patches
         im_patches = sample_patch_transformed(im, self.init_sample_pos, self.init_sample_scale, aug_expansion_sz,
                                               self.transforms)
-
 
         # Extract initial backbone features
         with torch.no_grad():
@@ -659,7 +598,6 @@ class OUPT(BaseTracker):
             replace_ind.append(r_ind)
 
         return replace_ind
-
     ###################################################################################
 
     def init_memory(self, train_x: TensorList):
@@ -770,8 +708,9 @@ class OUPT(BaseTracker):
         if self.params.iounet_augmentation:
             for T in self.transforms:
                 if not isinstance(T, (
-                augmentation.Identity, augmentation.Translation, augmentation.FlipHorizontal, augmentation.FlipVertical,
-                augmentation.Blur)):
+                        augmentation.Identity, augmentation.Translation, augmentation.FlipHorizontal,
+                        augmentation.FlipVertical,
+                        augmentation.Blur)):
                     break
                 target_boxes.append(self.classifier_target_box + torch.Tensor([T.shift[1], T.shift[0], 0, 0]))
         else:
@@ -814,7 +753,7 @@ class OUPT(BaseTracker):
         if self.params.get('window_output', False):
             if self.params.get('use_clipped_window', False):
                 self.output_window = dcf.hann2d_clipped(self.output_sz.long(), (
-                            self.output_sz * self.params.effective_search_area / self.params.search_area_scale).long(),
+                        self.output_sz * self.params.effective_search_area / self.params.search_area_scale).long(),
                                                         centered=True).to(self.params.device)
             else:
                 self.output_window = dcf.hann2d(self.output_sz.long(), centered=True).to(self.params.device)
@@ -942,7 +881,7 @@ class OUPT(BaseTracker):
         output_boxes[:, 2:].clamp_(1)
         aspect_ratio = output_boxes[:, 2] / output_boxes[:, 3]
         keep_ind = (aspect_ratio < self.params.maximal_aspect_ratio) * (
-                    aspect_ratio > 1 / self.params.maximal_aspect_ratio)
+                aspect_ratio > 1 / self.params.maximal_aspect_ratio)
         output_boxes = output_boxes[keep_ind, :]
         output_iou = output_iou[keep_ind]
 

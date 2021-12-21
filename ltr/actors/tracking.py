@@ -4,6 +4,7 @@ import torch
 
 class DiMPActor(BaseActor):
     """Actor for training the DiMP network."""
+
     def __init__(self, net, objective, loss_weight=None):
         super().__init__(net, objective)
         if loss_weight is None:
@@ -46,7 +47,7 @@ class DiMPActor(BaseActor):
         if 'test_iter_clf' in self.loss_weight.keys():
             test_iter_weights = self.loss_weight['test_iter_clf']
             if isinstance(test_iter_weights, list):
-                loss_test_iter_clf = sum([a*b for a, b in zip(test_iter_weights, clf_losses_test[1:-1])])
+                loss_test_iter_clf = sum([a * b for a, b in zip(test_iter_weights, clf_losses_test[1:-1])])
             else:
                 loss_test_iter_clf = (test_iter_weights / (len(clf_losses_test) - 2)) * sum(clf_losses_test[1:-1])
 
@@ -72,6 +73,7 @@ class DiMPActor(BaseActor):
 
 class KLDiMPActor(BaseActor):
     """Actor for training the DiMP network."""
+
     def __init__(self, net, objective, loss_weight=None):
         super().__init__(net, objective)
         if loss_weight is None:
@@ -111,7 +113,8 @@ class KLDiMPActor(BaseActor):
         loss_test_iter_clf = 0
         if 'test_clf' in self.loss_weight.keys():
             # Classification losses for the different optimization iterations
-            clf_losses_test = [self.objective['test_clf'](s, data['test_label'], data['test_anno']) for s in target_scores]
+            clf_losses_test = [self.objective['test_clf'](s, data['test_label'], data['test_anno']) for s in
+                               target_scores]
 
             # Loss of the final filter
             clf_loss_test = clf_losses_test[-1]
@@ -135,7 +138,8 @@ class KLDiMPActor(BaseActor):
         loss_clf_ce_iter = 0
         if 'clf_ce' in self.loss_weight.keys():
             # Classification losses for the different optimization iterations
-            clf_ce_losses = [self.objective['clf_ce'](s, data['test_label_density'], grid_dim=(-2,-1)) for s in target_scores]
+            clf_ce_losses = [self.objective['clf_ce'](s, data['test_label_density'], grid_dim=(-2, -1)) for s in
+                             target_scores]
 
             # Loss of the final filter
             clf_ce = clf_ce_losses[-1]
@@ -155,7 +159,7 @@ class KLDiMPActor(BaseActor):
 
         # Total loss
         loss = loss_bb_ce + loss_clf_ce + loss_clf_ce_init + loss_clf_ce_iter + \
-                            loss_target_classifier + loss_test_init_clf + loss_test_iter_clf
+               loss_target_classifier + loss_test_init_clf + loss_test_iter_clf
 
         if torch.isinf(loss) or torch.isnan(loss):
             raise Exception('ERROR: Loss was nan or inf!!!')
@@ -196,6 +200,7 @@ class KLDiMPActor(BaseActor):
 
 class KYSActor(BaseActor):
     """ Actor for training KYS model """
+
     def __init__(self, net, objective, loss_weight=None, dimp_jitter_fn=None):
         super().__init__(net, objective)
         self.loss_weight = loss_weight
@@ -262,7 +267,7 @@ class KYSActor(BaseActor):
         # Loop over the sequence
         for i in range(1, sequence_length):
             test_image_cur = data['test_images'][i, ...].to(self.device)
-            test_label_cur = data['test_label'][i:i+1, ...].to(self.device)
+            test_label_cur = data['test_label'][i:i + 1, ...].to(self.device)
             test_label_cur = test_label_cur[:, :, :-1, :-1].contiguous()
 
             test_anno_cur = data['test_anno'][i:i + 1, ...].to(self.device)
@@ -275,8 +280,10 @@ class KYSActor(BaseActor):
 
             if self.net.motion_feat_extractor is not None:
                 motion_feat_cur = self.net.motion_feat_extractor(backbone_feat_cur_all).view(1, num_sequences, -1,
-                                                                                             backbone_feat_cur.shape[-2],
-                                                                                             backbone_feat_cur.shape[-1])
+                                                                                             backbone_feat_cur.shape[
+                                                                                                 -2],
+                                                                                             backbone_feat_cur.shape[
+                                                                                                 -1])
             else:
                 motion_feat_cur = backbone_feat_cur
 
@@ -303,7 +310,8 @@ class KYSActor(BaseActor):
             aux_data = predictor_output['auxiliary_outputs']
 
             is_valid = valid_samples[i, :].view(1, -1, 1, 1).byte()
-            uncertain_frame = (test_visibility[i, :].view(1, -1, 1, 1) < 0.75) * (test_visibility[i, :].view(1, -1, 1, 1) > 0.25)
+            uncertain_frame = (test_visibility[i, :].view(1, -1, 1, 1) < 0.75) * (
+                        test_visibility[i, :].view(1, -1, 1, 1) > 0.25)
 
             is_valid = is_valid * ~uncertain_frame
 
@@ -318,7 +326,8 @@ class KYSActor(BaseActor):
 
             if 'fused_score_orig' in aux_data and 'test_clf_orig' in self.loss_weight.keys():
                 aux_data['fused_score_orig'] = aux_data['fused_score_orig'].view(test_label_cur.shape)
-                clf_loss_test_orig_new = self.objective['test_clf'](aux_data['fused_score_orig'], test_label_cur, test_anno_cur,  valid_samples=is_valid)
+                clf_loss_test_orig_new = self.objective['test_clf'](aux_data['fused_score_orig'], test_label_cur,
+                                                                    test_anno_cur, valid_samples=is_valid)
                 clf_loss_test_orig_all[:, i - 1] = clf_loss_test_orig_new.squeeze()
 
             if 'is_target' in aux_data and 'is_target' in self.loss_weight.keys() and 'is_target' in self.objective.keys():
@@ -330,13 +339,15 @@ class KYSActor(BaseActor):
                                                                             test_label_cur, is_valid)
                 is_target_after_prop_loss_all[:, i - 1] = is_target_after_prop_loss_new
 
-            test_clf_acc_new, test_pred_correct = self.objective['clf_acc'](predicted_resp, test_label_cur, valid_samples=is_valid)
+            test_clf_acc_new, test_pred_correct = self.objective['clf_acc'](predicted_resp, test_label_cur,
+                                                                            valid_samples=is_valid)
             test_clf_acc += test_clf_acc_new
 
             test_seq_all_correct = test_seq_all_correct * (test_pred_correct.long() | (1 - is_valid).long()).float()
             test_tracked_correct[:, i - 1] = test_pred_correct
 
-            dimp_clf_acc_new, dimp_pred_correct = self.objective['clf_acc'](dimp_scores_cur, test_label_cur, valid_samples=is_valid)
+            dimp_clf_acc_new, dimp_pred_correct = self.objective['clf_acc'](dimp_scores_cur, test_label_cur,
+                                                                            valid_samples=is_valid)
             dimp_clf_acc += dimp_clf_acc_new
 
             dimp_seq_all_correct = dimp_seq_all_correct * (dimp_pred_correct.long() | (1 - is_valid).long()).float()
@@ -382,5 +393,90 @@ class KYSActor(BaseActor):
                  'Loss/raw/test_seq_acc': test_seq_clf_acc.item(),
                  'Loss/raw/dimp_seq_acc': dimp_seq_clf_acc.item(),
                  }
+
+        return loss, stats
+
+
+class DiMPSimpleActor(BaseActor):
+    """Actor for training the DiMP network."""
+
+    def __init__(self, net, objective, loss_weight=None):
+        super().__init__(net, objective)
+        if loss_weight is None:
+            loss_weight = {'bb_ce': 1.0}
+        self.loss_weight = loss_weight
+
+    def __call__(self, data):
+        """
+        args:
+            data - The input data, should contain the fields 'train_images', 'test_images', 'train_anno',
+                    'test_proposals', 'proposal_iou' and 'test_label'.
+
+        returns:
+            loss    - the training loss
+            stats  -  dict containing detailed losses
+        """
+        # Run network
+        target_scores, bb_scores = self.net(train_imgs=data['train_images'],
+                                            test_imgs=data['test_images'],
+                                            train_bb=data['train_anno'],
+                                            test_proposals=data['test_proposals'],
+                                            train_label=data['train_label'])  # Differences from KLDiMPActor
+
+        # Reshape bb reg variables
+        is_valid = data['test_anno'][:, :, 0] < 99999.0
+        bb_scores = bb_scores[is_valid, :]
+        proposal_density = data['proposal_density'][is_valid, :]
+        gt_density = data['gt_density'][is_valid, :]
+
+        # Compute loss
+        bb_ce = self.objective['bb_ce'](bb_scores, sample_density=proposal_density, gt_density=gt_density, mc_dim=1)
+        loss_bb_ce = self.loss_weight['bb_ce'] * bb_ce
+
+        loss_test_init_clf = 0
+        loss_test_iter_clf = 0
+
+        # Classification losses for the different optimization iterations
+        clf_losses_test = [self.objective['test_clf'](s, data['test_label'], data['test_anno']) for s in target_scores]
+
+        # Loss of the final filter
+        clf_loss_test = clf_losses_test[-1]
+        loss_target_classifier = self.loss_weight['test_clf'] * clf_loss_test
+
+        # Loss for the initial filter iteration
+        if 'test_init_clf' in self.loss_weight.keys():
+            loss_test_init_clf = self.loss_weight['test_init_clf'] * clf_losses_test[0]
+
+        # Loss for the intermediate filter iterations
+        if 'test_iter_clf' in self.loss_weight.keys():
+            test_iter_weights = self.loss_weight['test_iter_clf']
+            if isinstance(test_iter_weights, list):
+                loss_test_iter_clf = sum([a * b for a, b in zip(test_iter_weights, clf_losses_test[1:-1])])
+            else:
+                loss_test_iter_clf = (test_iter_weights / (len(clf_losses_test) - 2)) * sum(clf_losses_test[1:-1])
+
+        # Total loss
+        loss = loss_bb_ce + loss_target_classifier + loss_test_init_clf + loss_test_iter_clf
+
+        if torch.isinf(loss) or torch.isnan(loss):
+            raise Exception('ERROR: Loss was nan or inf!!!')
+
+        # Log stats
+        stats = {'Loss/total': loss.item(),
+                 'Loss/bb_ce': bb_ce.item(),
+                 'Loss/loss_bb_ce': loss_bb_ce.item()}
+        if 'test_clf' in self.loss_weight.keys():
+            stats['Loss/target_clf'] = loss_target_classifier.item()
+        if 'test_init_clf' in self.loss_weight.keys():
+            stats['Loss/test_init_clf'] = loss_test_init_clf.item()
+        if 'test_iter_clf' in self.loss_weight.keys():
+            stats['Loss/test_iter_clf'] = loss_test_iter_clf.item()
+
+        if 'test_clf' in self.loss_weight.keys():
+            stats['ClfTrain/test_loss'] = clf_loss_test.item()
+            if len(clf_losses_test) > 0:
+                stats['ClfTrain/test_init_loss'] = clf_losses_test[0].item()
+                if len(clf_losses_test) > 2:
+                    stats['ClfTrain/test_iter_loss'] = sum(clf_losses_test[1:-1]).item() / (len(clf_losses_test) - 2)
 
         return loss, stats

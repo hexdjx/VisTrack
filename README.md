@@ -8,8 +8,8 @@
 
 ### Variable Scale Learning for Visual Object Tracking (VSLT)
 **Please cite:  
-[Xuedong He, Lu Zhao, Calvin Yu-Chian Chen. Variable Scale Learning for Visual Object Tracking[J]. Journal of Ambient Intelligence and Humanized Computing, 2021.](https://doi.org/10.1007/s12652-021-03469-2)**
-
+[Xuedong He, Lu Zhao, Calvin Yu-Chian Chen. Variable Scale Learning for Visual Object Tracking[J]. Journal of Ambient Intelligence and Humanized Computing, 2021.](https://doi.org/10.1007/s12652-021-03469-2)
+([Raw tracking results](https://drive.google.com/file/d/1Zx56bPoaymWYc7CVq-3DzlfnoFXi8OwY/view?usp=sharing))**
 ## Acknowledgments
 Thanks for the great [PyTracking](https://github.com/visionml/pytracking) Library, which helps us to quickly implement our ideas.
 

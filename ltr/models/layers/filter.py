@@ -165,7 +165,6 @@ def _apply_feat_transpose_v4(feat, input, filter_ksz):
     return filter_grad.permute(1,0,2,3)
 
 
-
 def filter_gradient(feat, filter, label=None, training=True):
     """Computes gradient of the filter when applied on the input features and ground truth label.
     args:

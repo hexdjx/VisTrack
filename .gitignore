@@ -1,6 +1,7 @@
 *__pycache__*
 *.idea
 /pytracking/results/
+/ltr/models/target_classifier/features_add.py
 
 /ltr/actors/fusionnet.py
 /ltr/actors/verifynet.py
@@ -10,9 +11,6 @@
 /ltr/external/
 /ltr/models/attention/
 /ltr/models/fusionnet/
-/ltr/models/target_classifier/features.py
-/ltr/models/target_classifier/linear_filter_tmp.py
-/ltr/models/target_classifier/multihead_attention.py
 /ltr/models/tracking/endimpnet.py
 /ltr/models/tracking/fudimpnet.py
 /ltr/models/verifynet/

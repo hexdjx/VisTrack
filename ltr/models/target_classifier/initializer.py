@@ -45,7 +45,6 @@ class FilterPool(nn.Module):
         return self.prroi_pool(feat, roi1)
 
 
-
 class FilterInitializer(nn.Module):
     """Initializes a target classification filter by applying a number of conv layers before and after pooling the target region.
     args:
@@ -171,7 +170,6 @@ class FilterInitializerLinear(nn.Module):
             weights = weights / (weights.shape[1] * weights.shape[2] * weights.shape[3])
 
         return weights
-
 
 
 class FilterInitializerZero(nn.Module):

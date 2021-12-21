@@ -27,8 +27,10 @@ class DiMPSteepestDescentGN(nn.Module):
         detach_length:  Detach the filter every n-th iteration. Default is to never detech, i.e. 'Inf'.
         alpha_eps:  Term in the denominator of the steepest descent that stabalizes learning.
     """
+
     def __init__(self, num_iter=1, feat_stride=16, init_step_length=1.0,
-                 init_filter_reg=1e-2, init_gauss_sigma=1.0, num_dist_bins=5, bin_displacement=1.0, mask_init_factor=4.0,
+                 init_filter_reg=1e-2, init_gauss_sigma=1.0, num_dist_bins=5, bin_displacement=1.0,
+                 mask_init_factor=4.0,
                  score_act='relu', act_param=None, min_filter_reg=1e-3, mask_act='sigmoid',
                  detach_length=float('Inf'), alpha_eps=0):
         super().__init__()
@@ -43,12 +45,12 @@ class DiMPSteepestDescentGN(nn.Module):
         self.alpha_eps = alpha_eps
 
         # Distance coordinates
-        d = torch.arange(num_dist_bins, dtype=torch.float32).reshape(1,-1,1,1) * bin_displacement
+        d = torch.arange(num_dist_bins, dtype=torch.float32).reshape(1, -1, 1, 1) * bin_displacement
         if init_gauss_sigma == 0:
             init_gauss = torch.zeros_like(d)
-            init_gauss[0,0,0,0] = 1
+            init_gauss[0, 0, 0, 0] = 1
         else:
-            init_gauss = torch.exp(-1/2 * (d / init_gauss_sigma)**2)
+            init_gauss = torch.exp(-1 / 2 * (d / init_gauss_sigma) ** 2)
 
         # Module that predicts the target label function (y in the paper)
         self.label_map_predictor = nn.Conv2d(num_dist_bins, 1, kernel_size=1, bias=False)
@@ -80,7 +82,6 @@ class DiMPSteepestDescentGN(nn.Module):
         else:
             raise ValueError('Unknown score activation')
 
-
     def forward(self, weights, feat, bb, sample_weight=None, num_iter=None, compute_losses=True):
         """Runs the optimizer module.
         Note that [] denotes an optional dimension.
@@ -105,7 +106,7 @@ class DiMPSteepestDescentGN(nn.Module):
 
         # Get learnable scalars
         step_length_factor = torch.exp(self.log_step_length)
-        reg_weight = (self.filter_reg*self.filter_reg).clamp(min=self.min_filter_reg**2)
+        reg_weight = (self.filter_reg * self.filter_reg).clamp(min=self.min_filter_reg ** 2)
 
         # Compute distance map
         dmap_offset = (torch.Tensor(filter_sz).to(bb.device) % 2) / 2.0
@@ -115,7 +116,8 @@ class DiMPSteepestDescentGN(nn.Module):
         # Compute label map masks and weight
         label_map = self.label_map_predictor(dist_map).reshape(num_images, num_sequences, *dist_map.shape[-2:])
         target_mask = self.target_mask_predictor(dist_map).reshape(num_images, num_sequences, *dist_map.shape[-2:])
-        spatial_weight = self.spatial_weight_predictor(dist_map).reshape(num_images, num_sequences, *dist_map.shape[-2:])
+        spatial_weight = self.spatial_weight_predictor(dist_map).reshape(num_images, num_sequences,
+                                                                         *dist_map.shape[-2:])
 
         # Get total sample weights
         if sample_weight is None:
@@ -139,20 +141,22 @@ class DiMPSteepestDescentGN(nn.Module):
             residuals = sample_weight * (scores_act - label_map)
 
             if compute_losses:
-                losses.append(((residuals**2).sum() + reg_weight * (weights**2).sum())/num_sequences)
+                losses.append(((residuals ** 2).sum() + reg_weight * (weights ** 2).sum()) / num_sequences)
 
             # Compute gradient
             residuals_mapped = score_mask * (sample_weight * residuals)
-            weights_grad = filter_layer.apply_feat_transpose(feat, residuals_mapped, filter_sz, training=self.training) + \
-                          reg_weight * weights
+            weights_grad = filter_layer.apply_feat_transpose(feat, residuals_mapped, filter_sz,
+                                                             training=self.training) + \
+                           reg_weight * weights
 
             # Map the gradient with the Jacobian
             scores_grad = filter_layer.apply_filter(feat, weights_grad)
             scores_grad = sample_weight * (score_mask * scores_grad)
 
             # Compute optimal step length
-            alpha_num = (weights_grad * weights_grad).sum(dim=(1,2,3))
-            alpha_den = ((scores_grad * scores_grad).reshape(num_images, num_sequences, -1).sum(dim=(0,2)) + (reg_weight + self.alpha_eps) * alpha_num).clamp(1e-8)
+            alpha_num = (weights_grad * weights_grad).sum(dim=(1, 2, 3))
+            alpha_den = ((scores_grad * scores_grad).reshape(num_images, num_sequences, -1).sum(dim=(0, 2)) + (
+                    reg_weight + self.alpha_eps) * alpha_num).clamp(1e-8)
             alpha = alpha_num / alpha_den
 
             # Update filter
@@ -164,7 +168,8 @@ class DiMPSteepestDescentGN(nn.Module):
         if compute_losses:
             scores = filter_layer.apply_filter(feat, weights)
             scores = self.score_activation(scores, target_mask)
-            losses.append((((sample_weight * (scores - label_map))**2).sum() + reg_weight * (weights**2).sum())/num_sequences)
+            losses.append((((sample_weight * (scores - label_map)) ** 2).sum() + reg_weight * (
+                    weights ** 2).sum()) / num_sequences)
 
         return weights, weight_iterates, losses
 
@@ -182,6 +187,7 @@ class DiMPL2SteepestDescentGN(nn.Module):
         detach_length:  Detach the filter every n-th iteration. Default is to never detech, i.e. 'Inf'.
         alpha_eps:  Term in the denominator of the steepest descent that stabalizes learning.
     """
+
     def __init__(self, num_iter=1, feat_stride=16, init_step_length=1.0, gauss_sigma=1.0, hinge_threshold=-999,
                  init_filter_reg=1e-2, min_filter_reg=1e-3, detach_length=float('Inf'), alpha_eps=0.0):
         super().__init__()
@@ -200,11 +206,12 @@ class DiMPL2SteepestDescentGN(nn.Module):
         center = center.reshape(center.shape[0], -1, center.shape[-1])
         k0 = torch.arange(output_sz[0], dtype=torch.float32).reshape(1, 1, -1, 1).to(center.device)
         k1 = torch.arange(output_sz[1], dtype=torch.float32).reshape(1, 1, 1, -1).to(center.device)
-        g0 = torch.exp(-1.0 / (2 * self.gauss_sigma ** 2) * (k0 - center[:,:,0].reshape(*center.shape[:2], 1, 1)) ** 2)
-        g1 = torch.exp(-1.0 / (2 * self.gauss_sigma ** 2) * (k1 - center[:,:,1].reshape(*center.shape[:2], 1, 1)) ** 2)
+        g0 = torch.exp(
+            -1.0 / (2 * self.gauss_sigma ** 2) * (k0 - center[:, :, 0].reshape(*center.shape[:2], 1, 1)) ** 2)
+        g1 = torch.exp(
+            -1.0 / (2 * self.gauss_sigma ** 2) * (k1 - center[:, :, 1].reshape(*center.shape[:2], 1, 1)) ** 2)
         gauss = g0 * g1
         return gauss
-
 
     def forward(self, weights, feat, bb, sample_weight=None, num_iter=None, compute_losses=True):
         """Runs the optimizer module.
@@ -230,7 +237,7 @@ class DiMPL2SteepestDescentGN(nn.Module):
 
         # Get learnable scalars
         step_length_factor = torch.exp(self.log_step_length)
-        reg_weight = (self.filter_reg*self.filter_reg).clamp(min=self.min_filter_reg**2)
+        reg_weight = (self.filter_reg * self.filter_reg).clamp(min=self.min_filter_reg ** 2)
 
         # Compute distance map
         dmap_offset = (torch.Tensor(filter_sz).to(bb.device) % 2) / 2.0
@@ -259,20 +266,22 @@ class DiMPL2SteepestDescentGN(nn.Module):
             residuals = sample_weight * (scores_act - label_map)
 
             if compute_losses:
-                losses.append(((residuals**2).sum() + reg_weight * (weights**2).sum())/num_sequences)
+                losses.append(((residuals ** 2).sum() + reg_weight * (weights ** 2).sum()) / num_sequences)
 
             # Compute gradient
             residuals_mapped = score_mask * (sample_weight * residuals)
-            weights_grad = filter_layer.apply_feat_transpose(feat, residuals_mapped, filter_sz, training=self.training) + \
-                          reg_weight * weights
+            weights_grad = filter_layer.apply_feat_transpose(feat, residuals_mapped, filter_sz,
+                                                             training=self.training) + \
+                           reg_weight * weights
 
             # Map the gradient with the Jacobian
             scores_grad = filter_layer.apply_filter(feat, weights_grad)
             scores_grad = sample_weight * (score_mask * scores_grad)
 
             # Compute optimal step length
-            alpha_num = (weights_grad * weights_grad).sum(dim=(1,2,3))
-            alpha_den = ((scores_grad * scores_grad).reshape(num_images, num_sequences, -1).sum(dim=(0,2)) + (reg_weight + self.alpha_eps) * alpha_num).clamp(1e-8)
+            alpha_num = (weights_grad * weights_grad).sum(dim=(1, 2, 3))
+            alpha_den = ((scores_grad * scores_grad).reshape(num_images, num_sequences, -1).sum(dim=(0, 2)) + (
+                    reg_weight + self.alpha_eps) * alpha_num).clamp(1e-8)
             alpha = alpha_num / alpha_den
 
             # Update filter
@@ -284,7 +293,8 @@ class DiMPL2SteepestDescentGN(nn.Module):
         if compute_losses:
             scores = filter_layer.apply_filter(feat, weights)
             scores = target_mask * scores + (1.0 - target_mask) * F.relu(scores)
-            losses.append((((sample_weight * (scores - label_map))**2).sum() + reg_weight * (weights**2).sum())/num_sequences)
+            losses.append((((sample_weight * (scores - label_map)) ** 2).sum() + reg_weight * (
+                    weights ** 2).sum()) / num_sequences)
 
         return weights, weight_iterates, losses
 
@@ -307,9 +317,11 @@ class PrDiMPSteepestDescentNewton(nn.Module):
         softmax_reg:  Regularization in the denominator of the SoftMax.
         label_threshold:  Threshold probabilities smaller than this.
     """
+
     def __init__(self, num_iter=1, feat_stride=16, init_step_length=1.0,
                  init_filter_reg=1e-2, gauss_sigma=1.0, min_filter_reg=1e-3, detach_length=float('Inf'),
-                 alpha_eps=0.0, init_uni_weight=None, normalize_label=False, label_shrink=0, softmax_reg=None, label_threshold=0.0):
+                 alpha_eps=0.0, init_uni_weight=None, normalize_label=False, label_shrink=0, softmax_reg=None,
+                 label_threshold=0.0):
         super().__init__()
 
         self.num_iter = num_iter
@@ -330,8 +342,8 @@ class PrDiMPSteepestDescentNewton(nn.Module):
         center = center.reshape(center.shape[0], -1, center.shape[-1])
         k0 = torch.arange(output_sz[0], dtype=torch.float32).reshape(1, 1, -1, 1).to(center.device)
         k1 = torch.arange(output_sz[1], dtype=torch.float32).reshape(1, 1, 1, -1).to(center.device)
-        dist0 = (k0 - center[:,:,0].reshape(*center.shape[:2], 1, 1)) ** 2
-        dist1 = (k1 - center[:,:,1].reshape(*center.shape[:2], 1, 1)) ** 2
+        dist0 = (k0 - center[:, :, 0].reshape(*center.shape[:2], 1, 1)) ** 2
+        dist1 = (k1 - center[:, :, 1].reshape(*center.shape[:2], 1, 1)) ** 2
         if self.gauss_sigma == 0:
             dist0_view = dist0.reshape(-1, dist0.shape[-2])
             dist1_view = dist1.reshape(-1, dist1.shape[-1])
@@ -343,11 +355,12 @@ class PrDiMPSteepestDescentNewton(nn.Module):
         else:
             g0 = torch.exp(-1.0 / (2 * self.gauss_sigma ** 2) * dist0)
             g1 = torch.exp(-1.0 / (2 * self.gauss_sigma ** 2) * dist1)
-            gauss = (g0 / (2*math.pi*self.gauss_sigma**2)) * g1
+            gauss = (g0 / (2 * math.pi * self.gauss_sigma ** 2)) * g1
         gauss = gauss * (gauss > self.label_threshold).float()
         if self.normalize_label:
-            gauss /= (gauss.sum(dim=(-2,-1), keepdim=True) + 1e-8)
-        label_dens = (1.0 - self.label_shrink)*((1.0 - self.uni_weight) * gauss + self.uni_weight / (output_sz[0]*output_sz[1]))
+            gauss /= (gauss.sum(dim=(-2, -1), keepdim=True) + 1e-8)
+        label_dens = (1.0 - self.label_shrink) * (
+                (1.0 - self.uni_weight) * gauss + self.uni_weight / (output_sz[0] * output_sz[1]))
         return label_dens
 
     def forward(self, weights, feat, bb, sample_weight=None, num_iter=None, compute_losses=True):
@@ -374,7 +387,7 @@ class PrDiMPSteepestDescentNewton(nn.Module):
 
         # Get learnable scalars
         step_length_factor = torch.exp(self.log_step_length)
-        reg_weight = (self.filter_reg*self.filter_reg).clamp(min=self.min_filter_reg**2)
+        reg_weight = (self.filter_reg * self.filter_reg).clamp(min=self.min_filter_reg ** 2)
 
         # Compute label density
         offset = (torch.Tensor(filter_sz).to(bb.device) % 2) / 2.0
@@ -388,9 +401,11 @@ class PrDiMPSteepestDescentNewton(nn.Module):
             sample_weight = sample_weight.reshape(num_images, num_sequences, 1, 1)
 
         exp_reg = 0 if self.softmax_reg is None else math.exp(self.softmax_reg)
+
         def _compute_loss(scores, weights):
             return torch.sum(sample_weight.reshape(sample_weight.shape[0], -1) *
-                             (torch.log(scores.exp().sum(dim=(-2, -1)) + exp_reg) - (label_density * scores).sum(dim=(-2, -1)))) / num_sequences +\
+                             (torch.log(scores.exp().sum(dim=(-2, -1)) + exp_reg) - (label_density * scores).sum(
+                                 dim=(-2, -1)))) / num_sequences + \
                    reg_weight * (weights ** 2).sum() / num_sequences
 
         weight_iterates = [weights]
@@ -402,25 +417,27 @@ class PrDiMPSteepestDescentNewton(nn.Module):
 
             # Compute "residuals"
             scores = filter_layer.apply_filter(feat, weights)
-            scores_softmax = activation.softmax_reg(scores.reshape(num_images, num_sequences, -1), dim=2, reg=self.softmax_reg).reshape(scores.shape)
-            res = sample_weight*(scores_softmax - label_density)
+            scores_softmax = activation.softmax_reg(scores.reshape(num_images, num_sequences, -1), dim=2,
+                                                    reg=self.softmax_reg).reshape(scores.shape)
+            res = sample_weight * (scores_softmax - label_density)
 
             if compute_losses:
                 losses.append(_compute_loss(scores, weights))
 
             # Compute gradient
             weights_grad = filter_layer.apply_feat_transpose(feat, res, filter_sz, training=self.training) + \
-                          reg_weight * weights
+                           reg_weight * weights
 
             # Map the gradient with the Hessian
             scores_grad = filter_layer.apply_filter(feat, weights_grad)
             sm_scores_grad = scores_softmax * scores_grad
-            hes_scores_grad = sm_scores_grad - scores_softmax * torch.sum(sm_scores_grad, dim=(-2,-1), keepdim=True)
-            grad_hes_grad = (scores_grad * hes_scores_grad).reshape(num_images, num_sequences, -1).sum(dim=2).clamp(min=0)
+            hes_scores_grad = sm_scores_grad - scores_softmax * torch.sum(sm_scores_grad, dim=(-2, -1), keepdim=True)
+            grad_hes_grad = (scores_grad * hes_scores_grad).reshape(num_images, num_sequences, -1).sum(dim=2).clamp(
+                min=0)
             grad_hes_grad = (sample_weight.reshape(sample_weight.shape[0], -1) * grad_hes_grad).sum(dim=0)
 
             # Compute optimal step length
-            alpha_num = (weights_grad * weights_grad).sum(dim=(1,2,3))
+            alpha_num = (weights_grad * weights_grad).sum(dim=(1, 2, 3))
             alpha_den = (grad_hes_grad + (reg_weight + self.alpha_eps) * alpha_num).clamp(1e-8)
             alpha = alpha_num / alpha_den
 

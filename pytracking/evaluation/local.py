@@ -13,6 +13,7 @@ def local_env_settings():
     settings.davis_dir = dataset_path + 'DAVIS/2017'
     settings.got10k_path = dataset_path + 'GOT-10k'
     settings.lasot_path = dataset_path + 'LaSOT/LaSOTBenchmark'
+    settings.lasot_extension_subset_path = dataset_path + 'LaSOT_extension_subset'
     settings.nfs_path = dataset_path + 'NFS'
     settings.otb_path = dataset_path + 'OTB100'
     settings.tpl_path = dataset_path + 'TC128'

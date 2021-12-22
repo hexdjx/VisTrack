@@ -5,17 +5,22 @@
 *.pytest_cache
 *.ipynb_checkpoints/
 /ltr/models/target_classifier/features_add.py
+/ltr/data/processing_add.py
+/ltr/dataset/tmp/
 /pytracking/results/
 /pytracking/analysis/analyze_results_add.py
 /pytracking/experiments/myexperiments_add.py
 /pytracking/analysis/my_utils/
 /pytracking/VOT/*workspace/
 
+/pytracking/parameter/endimp/
+/pytracking/parameter/fudimp/
+/pytracking/parameter/rvt/
+/pytracking/tracker/endimp/
+/pytracking/tracker/fudimp/
+/pytracking/tracker/rvt/
 /ltr/actors/fusionnet.py
 /ltr/actors/verifynet.py
-/ltr/data/processing.py
-/ltr/data/processing_utils.py
-/ltr/dataset/tmp/
 /ltr/models/attention/
 /ltr/models/fusionnet/
 /ltr/models/tracking/endimpnet.py
@@ -27,11 +32,6 @@
 /ltr/train_settings/FusionNet/
 /ltr/train_settings/VerifyNet/
 /ltr/readme.txt
-/pytracking/parameter/endimp/
-/pytracking/parameter/fudimp/
-/pytracking/parameter/rvt/
-/pytracking/tracker/endimp/
-/pytracking/tracker/fudimp/
-/pytracking/tracker/rvt/
+
 
 

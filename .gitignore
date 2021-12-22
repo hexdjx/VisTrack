@@ -3,6 +3,7 @@
 /pytracking/results/
 /ltr/models/target_classifier/features_add.py
 /pytracking/analysis/analyze_results_add.py
+/pytracking/experiments/myexperiments_add.py
 
 /ltr/actors/fusionnet.py
 /ltr/actors/verifynet.py
@@ -23,7 +24,6 @@
 /ltr/readme.txt
 
 /pytracking/analysis/my_utils/
-/pytracking/experiments/
 
 /pytracking/parameter/endimp/
 /pytracking/parameter/fudimp/

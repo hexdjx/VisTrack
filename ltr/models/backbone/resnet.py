@@ -12,6 +12,7 @@ def conv3x3(in_planes, out_planes, stride=1, dilation=1):
                      padding=dilation, bias=False, dilation=dilation)
 
 
+# from torchvision.models.resnet import BasicBlock, Bottleneck
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -94,7 +95,9 @@ class Bottleneck(nn.Module):
 
 class ResNet(Backbone):
     """ ResNet network module. Allows extracting specific feature blocks."""
-    def __init__(self, block, layers, output_layers, num_classes=1000, inplanes=64, dilation_factor=1, frozen_layers=()):
+
+    def __init__(self, block, layers, output_layers, num_classes=1000, inplanes=64, dilation_factor=1,
+                 frozen_layers=()):
         self.inplanes = inplanes
         super(ResNet, self).__init__(frozen_layers=frozen_layers)
         self.output_layers = output_layers
@@ -104,18 +107,21 @@ class ResNet(Backbone):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         stride = [1 + (dilation_factor < l) for l in (8, 4, 2)]
-        self.layer1 = self._make_layer(block, inplanes, layers[0], dilation=max(dilation_factor//8, 1))
-        self.layer2 = self._make_layer(block, inplanes*2, layers[1], stride=stride[0], dilation=max(dilation_factor//4, 1))
-        self.layer3 = self._make_layer(block, inplanes*4, layers[2], stride=stride[1], dilation=max(dilation_factor//2, 1))
-        self.layer4 = self._make_layer(block, inplanes*8, layers[3], stride=stride[2], dilation=dilation_factor)
+        self.layer1 = self._make_layer(block, inplanes, layers[0], dilation=max(dilation_factor // 8, 1))
+        self.layer2 = self._make_layer(block, inplanes * 2, layers[1], stride=stride[0],
+                                       dilation=max(dilation_factor // 4, 1))
+        self.layer3 = self._make_layer(block, inplanes * 4, layers[2], stride=stride[1],
+                                       dilation=max(dilation_factor // 2, 1))
+        self.layer4 = self._make_layer(block, inplanes * 8, layers[3], stride=stride[2], dilation=dilation_factor)
 
-        out_feature_strides = {'conv1': 4, 'layer1': 4, 'layer2': 4*stride[0], 'layer3': 4*stride[0]*stride[1],
-                               'layer4': 4*stride[0]*stride[1]*stride[2]}
+        out_feature_strides = {'conv1': 4, 'layer1': 4, 'layer2': 4 * stride[0], 'layer3': 4 * stride[0] * stride[1],
+                               'layer4': 4 * stride[0] * stride[1] * stride[2]}
 
         # TODO better way?
         if isinstance(self.layer1[0], BasicBlock):
-            out_feature_channels = {'conv1': inplanes, 'layer1': inplanes, 'layer2': inplanes*2, 'layer3': inplanes*4,
-                               'layer4': inplanes*8}
+            out_feature_channels = {'conv1': inplanes, 'layer1': inplanes, 'layer2': inplanes * 2,
+                                    'layer3': inplanes * 4,
+                                    'layer4': inplanes * 8}
         elif isinstance(self.layer1[0], Bottleneck):
             base_num_channels = 4 * inplanes
             out_feature_channels = {'conv1': inplanes, 'layer1': base_num_channels, 'layer2': base_num_channels * 2,
@@ -127,8 +133,8 @@ class ResNet(Backbone):
         self._out_feature_channels = out_feature_channels
 
         # self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
-        self.fc = nn.Linear(inplanes*8 * block.expansion, num_classes)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(inplanes * 8 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -271,4 +277,22 @@ def resnet50(output_layers=None, pretrained=False, **kwargs):
     model = ResNet(Bottleneck, [3, 4, 6, 3], output_layers, **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+    return model
+
+def resnet101(output_layers=None, pretrained=False, **kwargs):
+    """Constructs a ResNet-101 model.
+    """
+
+    if output_layers is None:
+        output_layers = ['default']
+    else:
+        for l in output_layers:
+            if l not in ['conv1', 'layer1', 'layer2', 'layer3', 'layer4']:
+                raise ValueError('Unknown layer: {}'.format(l))
+
+    model = ResNet(Bottleneck, [3, 4, 23, 3], output_layers, **kwargs)
+
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
+
     return model

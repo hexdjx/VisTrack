@@ -2,7 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
+from torchvision.models.utils import load_state_dict_from_url
 
+
+model_urls = {
+    "mobilenet_v3_large": "https://download.pytorch.org/models/mobilenet_v3_large-8738ca79.pth",
+    "mobilenet_v3_small": "https://download.pytorch.org/models/mobilenet_v3_small-047dcff4.pth",
+}
 
 def get_model_parameters(model):
     total_parameters = 0
@@ -298,7 +304,7 @@ class MobileNetV3(nn.Module):
             return out
         return outputs
 
-def mobilenet3(output_layers=None, path=None):
+def mobilenet3(output_layers=None, pretrained=False):
 
     if output_layers is None:
         output_layers = ['default']
@@ -308,10 +314,10 @@ def mobilenet3(output_layers=None, path=None):
                 raise ValueError('Unknown layer: {}'.format(l))
     
     model = MobileNetV3(model_mode="LARGE", num_classes=100, multiplier=1.0,output_layers=output_layers,dropout_rate = 0.8)
-    if path is not None:
-        print(path)
-        checkpoint = torch.load(path)
-        model.load_state_dict(checkpoint['model'], strict=False)
+
+    if pretrained:
+        state_dict = load_state_dict_from_url(model_urls['mobilenet_v3_large'])
+        model.load_state_dict(state_dict)
     return model
 
 # temp = torch.zeros((1, 3, 224, 224))

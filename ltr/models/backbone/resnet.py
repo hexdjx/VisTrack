@@ -262,6 +262,22 @@ def resnet18(output_layers=None, pretrained=False, **kwargs):
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
     return model
 
+def resnet34(output_layers=None, pretrained=False, dilation_factor=1):
+    """Constructs a ResNet-18 model.
+    """
+
+    if output_layers is None:
+        output_layers = ['default']
+    else:
+        for l in output_layers:
+            if l not in ['conv1', 'layer1', 'layer2', 'layer3', 'layer4', 'fc']:
+                raise ValueError('Unknown layer: {}'.format(l))
+
+    model = ResNet(BasicBlock, [3, 4, 6, 3], output_layers, dilation_factor=dilation_factor)
+
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
+    return model
 
 def resnet50(output_layers=None, pretrained=False, **kwargs):
     """Constructs a ResNet-50 model.

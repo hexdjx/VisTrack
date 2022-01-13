@@ -4,32 +4,9 @@
 *.pyc
 *.pytest_cache
 *.ipynb_checkpoints/
-/ltr/models/target_classifier/features_add.py
-/ltr/data/processing_add.py
-/ltr/dataset/tmp/
-/pytracking/results/
-/pytracking/analysis/analyze_results_add.py
-/pytracking/experiments/myexperiments_add.py
-/pytracking/analysis/my_utils/
-/pytracking/VOT/*workspace/
 
-/pytracking/parameter/endimp/
-/pytracking/parameter/fudimp/
-/pytracking/parameter/rvt/
-/pytracking/tracker/endimp/
-/pytracking/tracker/fudimp/
-/pytracking/tracker/rvt/
-/ltr/actors/fusionnet.py
-/ltr/actors/verifynet.py
-/ltr/models/fusionnet/
-/ltr/models/tracking/endimpnet.py
-/ltr/models/tracking/fudimpnet.py
-/ltr/models/verifynet/
-/ltr/models/utils.py
-/ltr/train_settings/endimp/
-/ltr/train_settings/fudimp/
-/ltr/train_settings/FusionNet/
-/ltr/train_settings/VerifyNet/
+/pytracking/results/
+/pytracking/VOT/*workspace/
 
 
 

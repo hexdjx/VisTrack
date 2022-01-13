@@ -1,4 +1,5 @@
 import torch
+import cv2 as cv
 import math
 import numpy as np
 import torchvision.transforms as transforms
@@ -954,3 +955,63 @@ class KYSProcessing(BaseProcessing):
             data['test_label'] = self._generate_label_function(data['test_anno'], test_target_absent)
 
         return data
+
+# --AlphaRefine--###############################################################
+class SEMaskProcessing(SEProcessing):
+    def __call__(self, data: TensorDict):
+        """
+        args:
+            data - The input data, should contain the following fields:
+                'train_images'
+                'test_images'
+                'train_anno'
+                'test_anno'
+
+        returns:
+            TensorDict - output data block with following fields:
+                'train_images'
+                'test_images'
+                'train_anno'
+                'test_anno'
+                'test_proposals'
+                'proposal_iou'
+        """
+        # Apply joint transforms
+        if self.transform['joint'] is not None:
+            num_train_images = len(data['train_images'])
+            all_images = data['train_images'] + data['test_images']
+            all_images_trans = self.transform['joint'](*all_images)
+
+            data['train_images'] = all_images_trans[:num_train_images]
+            data['test_images'] = all_images_trans[num_train_images:]
+
+        for s in ['train', 'test']:
+            assert self.mode == 'sequence' or len(data[s + '_images']) == 1, \
+                "In pair mode, num train/test frames must be 1"
+
+            # Add a uniform noise to the center pos
+            jittered_anno = [self._get_jittered_box(a, s) for a in data[s + '_anno']]
+
+            # Crop image region centered at jittered_anno box
+            crops, boxes = prutils.jittered_center_crop_v2(data[s + '_images'], jittered_anno, data[s + '_anno'],
+                                                              self.search_area_factor, self.output_sz, mode=cv.BORDER_CONSTANT)
+            # Apply transforms
+            data[s + '_images'] = [self.transform[s](x) for x in crops]  # x : `numpy.ndarray`
+            data[s + '_anno'] = boxes
+
+            mask_crops = prutils.jittered_center_crop_v2(data[s + '_masks'], jittered_anno, data[s + '_anno'],
+                                                            self.search_area_factor, self.output_sz,
+                                                            get_bbox_coord=False, mode=cv.BORDER_CONSTANT)
+            data[s + '_masks'] = [self.mask_np2torch(x) for x in mask_crops]
+
+        # Prepare output
+        if self.mode == 'sequence':
+            data = data.apply(prutils.stack_tensors)
+        else:
+            data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
+
+        return data
+
+    def mask_np2torch(self, mask_np):
+        return torch.from_numpy(mask_np.transpose((2, 0, 1))).float()
+###########################################################################

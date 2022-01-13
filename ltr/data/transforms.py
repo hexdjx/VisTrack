@@ -193,7 +193,6 @@ class ToTensor(TransformBase):
             return torch.from_numpy(mask)
 
 
-
 class ToTensorAndJitter(TransformBase):
     """Convert to a Tensor and jitter brightness"""
     def __init__(self, brightness_jitter=0.0, normalize=True):

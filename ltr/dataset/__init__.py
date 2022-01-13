@@ -4,3 +4,6 @@ from .tracking_net import TrackingNet
 from .coco import MSCOCO
 from .coco_seq import MSCOCOSeq
 from .youtubevos import YouTubeVOS
+from .imagenetvid import ImagenetVID
+from .imagenetdet import ImagenetDET
+from .saliency import Saliency

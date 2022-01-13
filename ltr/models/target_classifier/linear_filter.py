@@ -50,6 +50,7 @@ class LinearFilter(nn.Module):
 
         num_sequences = train_bb.shape[1]
 
+        # --my modify--##################################
         if not isinstance(train_feat, OrderedDict):
             if train_feat.dim() == 5:
                 train_feat = train_feat.reshape(-1, *train_feat.shape[-3:])

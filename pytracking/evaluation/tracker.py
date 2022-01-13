@@ -15,14 +15,12 @@ from pytracking.evaluation.multi_object_wrapper import MultiObjectWrapper
 from pathlib import Path
 import torch
 
-
-
 _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 0, 255), 3: (255, 0, 0),
                         4: (255, 255, 255), 5: (0, 0, 0), 6: (0, 255, 128),
                         7: (123, 123, 123), 8: (255, 128, 0), 9: (128, 0, 255)}
 
 
-def trackerlist(name: str, parameter_name: str, run_ids = None, display_name: str = None):
+def trackerlist(name: str, parameter_name: str, run_ids=None, display_name: str = None):
     """Generate list of trackers.
     args:
         name: Name of tracking method.
@@ -47,13 +45,6 @@ class Tracker:
     def __init__(self, name: str, parameter_name: str, run_id: int = None, display_name: str = None):
         assert run_id is None or isinstance(run_id, int)
 
-        #############################################
-        self.psr = []
-        self.apce = []
-        self.psmd = []
-        self.det = []
-        #############################################
-
         self.name = name
         self.parameter_name = parameter_name
         self.run_id = run_id
@@ -65,7 +56,8 @@ class Tracker:
             self.segmentation_dir = '{}/{}/{}'.format(env.segmentation_path, self.name, self.parameter_name)
         else:
             self.results_dir = '{}/{}/{}_{:03d}'.format(env.results_path, self.name, self.parameter_name, self.run_id)
-            self.segmentation_dir = '{}/{}/{}_{:03d}'.format(env.segmentation_path, self.name, self.parameter_name, self.run_id)
+            self.segmentation_dir = '{}/{}/{}_{:03d}'.format(env.segmentation_path, self.name, self.parameter_name,
+                                                             self.run_id)
 
         tracker_module_abspath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tracker', self.name))
         if os.path.isdir(tracker_module_abspath):
@@ -75,7 +67,6 @@ class Tracker:
             self.tracker_class = None
 
         self.visdom = None
-
 
     def _init_visdom(self, visdom_info, debug):
         visdom_info = {} if visdom_info is None else visdom_info
@@ -104,7 +95,6 @@ class Tracker:
 
             elif data['key'] == 'ArrowRight' and self.pause_mode:
                 self.step = True
-
 
     def create_tracker(self, params):
         tracker = self.tracker_class(params)
@@ -222,13 +212,6 @@ class Tracker:
 
             out = tracker.track(image, info)
 
-            ################################################################
-            # self.psr.append(out['score_index']['psr'])
-            # self.apce.append(out['score_index']['apce'])
-            # self.psmd.append(out['score_index']['psmd'])
-            # self.det.append(out['score_index']['det'])
-            ################################################################
-
             prev_output = OrderedDict(out)
             _store_outputs(out, {'time': time.time() - start_time})
 
@@ -237,12 +220,8 @@ class Tracker:
                 tracker.visdom_draw_tracking(image, out['target_bbox'], segmentation)
             elif tracker.params.visualization:
                 self.visualize(frame_num, seq.ground_truth_rect[frame_num], image, out['target_bbox'],
-                            segmentation)
+                               segmentation)
 
-        ###################################################################
-        # plot score index scatter
-        # plot_scatter(self.psr, self.apce, self.psmd, self.det)
-        ###################################################################
         for key in ['target_bbox', 'segmentation']:
             if key in output and len(output[key]) <= 1:
                 output.pop(key)
@@ -349,7 +328,8 @@ class Tracker:
                 ret, frame = cap.read()
                 frame_disp = frame.copy()
 
-                cv.putText(frame_disp, 'Select target ROI and press ENTER', (20, 30), cv.FONT_HERSHEY_COMPLEX_SMALL, 1.5,
+                cv.putText(frame_disp, 'Select target ROI and press ENTER', (20, 30), cv.FONT_HERSHEY_COMPLEX_SMALL,
+                           1.5,
                            (0, 0, 0), 1)
 
                 cv.imshow(display_name, frame_disp)
@@ -623,7 +603,6 @@ class Tracker:
 
         import pytracking.evaluation.vot as vot
 
-
         def _convert_anno_to_list(vot_anno):
             vot_anno = [vot_anno[0][0][0], vot_anno[0][0][1], vot_anno[0][1][0], vot_anno[0][1][1],
                         vot_anno[0][2][0], vot_anno[0][2][1], vot_anno[0][3][0], vot_anno[0][3][1]]
@@ -699,22 +678,22 @@ class Tracker:
             rect = patches.Rectangle((box[0], box[1]), box[2], box[3], linewidth=1, edgecolor=col, facecolor='none')
             self.ax.add_patch(rect)
 
-#############################################################
+        #############################################################
         # my add
         if getattr(self, 'gt_state', None) is not None:
             gt_state = self.gt_state
-            rect = patches.Rectangle((gt_state[0], gt_state[1]), gt_state[2], gt_state[3], linewidth=1, edgecolor='r', facecolor='none')
+            rect = patches.Rectangle((gt_state[0], gt_state[1]), gt_state[2], gt_state[3], linewidth=1, edgecolor='r',
+                                     facecolor='none')
             self.ax.add_patch(rect)
-
 
         # self.ax.text(box[0], box[1] - 5, 'similarity={}'.format(similarity), color='r', fontsize=16)
         # self.ax.text(box[0], box[1] - 25, 'max_score={}'.format(max_score), color='r', fontsize=16)
 
-    #############################################################
+        #############################################################
         self.ax.set_axis_off()
         self.ax.axis('equal')
 
-        # img_path = '/home/hexd6/code/Tracking/VisTrack/pytracking/evaluation/img_result/MotorRolling/' + str(frame_num) + '.png'
+        # img_path = '/home/hexd6/code/Tracking/VisTrack/pytracking/evaluation/img_result/' + str(frame_num) + '.png'
         # plt.savefig(img_path)
 
         draw_figure(self.fig)
@@ -738,6 +717,3 @@ class Tracker:
     def _read_image(self, image_file: str):
         im = cv.imread(image_file)
         return cv.cvtColor(im, cv.COLOR_BGR2RGB)
-
-
-

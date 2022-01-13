@@ -6,7 +6,7 @@ from collections import OrderedDict
 def create_default_local_file():
     path = os.path.join(os.path.dirname(__file__), 'local.py')
 
-    empty_str = '/media/hexdjx/907856427856276E/'
+    empty_str = ''
     default_settings = OrderedDict({
         'workspace_dir': empty_str,
         'tensorboard_dir': 'self.workspace_dir + \'/tensorboard/\'',

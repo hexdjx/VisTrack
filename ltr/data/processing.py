@@ -262,85 +262,6 @@ class KLBBregProcessing(BaseProcessing):
         return data
 
 
-class ATOMwKLProcessing(BaseProcessing):
-    """Same as ATOMProcessing but using the GMM-based sampling of proposal boxes used in KLBBregProcessing."""
-
-    def __init__(self, search_area_factor, output_sz, center_jitter_factor, scale_jitter_factor, proposal_params,
-                 mode='pair', *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.search_area_factor = search_area_factor
-        self.output_sz = output_sz
-        self.center_jitter_factor = center_jitter_factor
-        self.scale_jitter_factor = scale_jitter_factor
-        self.proposal_params = proposal_params
-        self.mode = mode
-
-    def _get_jittered_box(self, box, mode):
-        """ Jitter the input box
-        args:
-            box - input bounding box
-            mode - string 'train' or 'test' indicating train or test data
-
-        returns:
-            torch.Tensor - jittered box
-        """
-
-        jittered_size = box[2:4] * torch.exp(torch.randn(2) * self.scale_jitter_factor[mode])
-        max_offset = (jittered_size.prod().sqrt() * torch.tensor(self.center_jitter_factor[mode]).float())
-        jittered_center = box[0:2] + 0.5 * box[2:4] + max_offset * (torch.rand(2) - 0.5)
-
-        return torch.cat((jittered_center - 0.5 * jittered_size, jittered_size), dim=0)
-
-    def _generate_proposals(self, box):
-        """
-        """
-        # Generate proposals
-        proposals, proposal_density, gt_density = prutils.sample_box_gmm(box, self.proposal_params['proposal_sigma'],
-                                                                         self.proposal_params['gt_sigma'],
-                                                                         self.proposal_params['boxes_per_frame'])
-
-        iou = prutils.iou_gen(proposals, box.view(1, 4))
-        return proposals, proposal_density, gt_density, iou
-
-    def __call__(self, data: TensorDict):
-        # Apply joint transforms
-        if self.transform['joint'] is not None:
-            data['train_images'], data['train_anno'] = self.transform['joint'](image=data['train_images'],
-                                                                               bbox=data['train_anno'])
-            data['test_images'], data['test_anno'] = self.transform['joint'](image=data['test_images'],
-                                                                             bbox=data['test_anno'], new_roll=False)
-
-        for s in ['train', 'test']:
-            assert self.mode == 'sequence' or len(data[s + '_images']) == 1, \
-                "In pair mode, num train/test frames must be 1"
-
-            # Add a uniform noise to the center pos
-            jittered_anno = [self._get_jittered_box(a, s) for a in data[s + '_anno']]
-
-            # Crop image region centered at jittered_anno box
-            crops, boxes, _ = prutils.jittered_center_crop(data[s + '_images'], jittered_anno, data[s + '_anno'],
-                                                           self.search_area_factor, self.output_sz)
-
-            # Apply transforms
-            data[s + '_images'], data[s + '_anno'] = self.transform[s](image=crops, bbox=boxes, joint=False)
-
-        # Generate proposals
-        proposals, proposal_density, gt_density, proposal_iou = zip(
-            *[self._generate_proposals(a) for a in data['test_anno']])
-
-        data['test_proposals'] = proposals
-        data['proposal_density'] = proposal_density
-        data['gt_density'] = gt_density
-        data['proposal_iou'] = proposal_iou
-        # Prepare output
-        if self.mode == 'sequence':
-            data = data.apply(stack_tensors)
-        else:
-            data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
-
-        return data
-
-
 class DiMPProcessing(BaseProcessing):
     """ The processing class used for training DiMP. The images are processed in the following way.
     First, the target bounding box is jittered by adding some noise. Next, a square region (called search region )
@@ -954,3 +875,161 @@ class KYSProcessing(BaseProcessing):
             data['test_label'] = self._generate_label_function(data['test_anno'], test_target_absent)
 
         return data
+
+
+# -- my add-- ############################################################################
+class VerifyNetProcessing(BaseProcessing):
+    def __init__(self, search_area_factor, output_sz, center_jitter_factor, scale_jitter_factor,
+                 mode='pair', *args, **kwargs):
+        """
+        args:
+            search_area_factor - The size of the search region  relative to the target size.
+            output_sz - An integer, denoting the size to which the search region is resized. The search region is always
+                        square.
+            center_jitter_factor - A dict containing the amount of jittering to be applied to the target center before
+                                    extracting the search region. See _get_jittered_box for how the jittering is done.
+            scale_jitter_factor - A dict containing the amount of jittering to be applied to the target size before
+                                    extracting the search region. See _get_jittered_box for how the jittering is done.
+            proposal_params - Arguments for the proposal generation process. See _generate_proposals for details.
+            mode - Either 'pair' or 'sequence'. If mode='sequence', then output has an extra dimension for frames
+        """
+        super().__init__(*args, **kwargs)
+        self.search_area_factor = search_area_factor
+        self.output_sz = output_sz
+        self.center_jitter_factor = center_jitter_factor
+        self.scale_jitter_factor = scale_jitter_factor
+        self.mode = mode
+
+    def _get_jittered_box(self, box, mode):
+        """ Jitter the input box
+        args:
+            box - input bounding box
+            mode - string 'train' or 'test' indicating train or test data
+
+        returns:
+            torch.Tensor - jittered box
+        """
+
+        jittered_size = box[2:4] * torch.exp(torch.randn(2) * self.scale_jitter_factor[mode])
+        max_offset = (jittered_size.prod().sqrt() * torch.tensor(self.center_jitter_factor[mode]).float())
+        jittered_center = box[0:2] + 0.5 * box[2:4] + max_offset * (torch.rand(2) - 0.5)
+
+        return torch.cat((jittered_center - 0.5 * jittered_size, jittered_size), dim=0)
+
+    def __call__(self, data: TensorDict):
+        """
+        args:
+            data - The input data, should contain the following fields:
+                'train_images', test_images', 'train_anno', 'test_anno'
+        returns:
+            TensorDict - output data block with following fields:
+                'train_images', 'test_images', 'train_anno', 'test_anno', 'test_proposals', 'proposal_iou'
+        """
+        # Apply joint transforms
+        if self.transform['joint'] is not None:
+            data['train_images'], data['train_anno'] = self.transform['joint'](image=data['train_images'],
+                                                                               bbox=data['train_anno'])
+            data['test_images'], data['test_anno'] = self.transform['joint'](image=data['test_images'],
+                                                                             bbox=data['test_anno'], new_roll=False)
+
+        for s in ['train', 'test']:
+            assert self.mode == 'sequence' or len(data[s + '_images']) == 1, \
+                "In pair mode, num train/test frames must be 1"
+
+            # Add a uniform noise to the center pos
+            jittered_anno = [self._get_jittered_box(a, s) for a in data[s + '_anno']]
+
+            target_proposals = prutils.target_proposals(jittered_anno[0])
+
+            target_crops = []
+            for anno in target_proposals:
+                target_crop = prutils.crop_target_proposals(data[s + '_images'][0], anno, self.output_sz)
+                target_crops.append(target_crop)
+            # Apply transforms
+            data[s + '_images'], data[s + '_anno'] = self.transform[s](image=target_crops, bbox=target_proposals, joint=False)
+
+        # Prepare output
+        if self.mode == 'sequence':
+            data = data.apply(stack_tensors)
+        else:
+            data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
+
+        return data
+
+
+class FusionNetProcessing(BaseProcessing):
+    def __init__(self, search_area_factor, output_sz, center_jitter_factor, scale_jitter_factor,
+                 mode='pair', *args, **kwargs):
+        """
+        args:
+            search_area_factor - The size of the search region  relative to the target size.
+            output_sz - An integer, denoting the size to which the search region is resized. The search region is always
+                        square.
+            center_jitter_factor - A dict containing the amount of jittering to be applied to the target center before
+                                    extracting the search region. See _get_jittered_box for how the jittering is done.
+            scale_jitter_factor - A dict containing the amount of jittering to be applied to the target size before
+                                    extracting the search region. See _get_jittered_box for how the jittering is done.
+            mode - Either 'pair' or 'sequence'. If mode='sequence', then output has an extra dimension for frames
+        """
+        super().__init__(*args, **kwargs)
+        self.search_area_factor = search_area_factor
+        self.output_sz = output_sz
+        self.center_jitter_factor = center_jitter_factor
+        self.scale_jitter_factor = scale_jitter_factor
+        self.mode = mode
+
+    def _get_jittered_box(self, box, mode):
+        """ Jitter the input box
+        args:
+            box - input bounding box
+            mode - string 'train' or 'test' indicating train or test data
+
+        returns:
+            torch.Tensor - jittered box
+        """
+
+        jittered_size = box[2:4] * torch.exp(torch.randn(2) * self.scale_jitter_factor[mode])
+        max_offset = (jittered_size.prod().sqrt() * torch.tensor(self.center_jitter_factor[mode]).float())
+        jittered_center = box[0:2] + 0.5 * box[2:4] + max_offset * (torch.rand(2) - 0.5)
+
+        return torch.cat((jittered_center - 0.5 * jittered_size, jittered_size), dim=0)
+
+    def __call__(self, data: TensorDict):
+        """
+        args:
+            data - The input data, should contain the following fields:
+                'train_images', test_images', 'train_anno', 'test_anno'
+        returns:
+            TensorDict - output data block with following fields:
+                'train_images', 'test_images', 'train_anno', 'test_anno', 'test_proposals', 'proposal_iou'
+        """
+        # Apply joint transforms
+        if self.transform['joint'] is not None:
+            data['train_images'], data['train_anno'] = self.transform['joint'](image=data['train_images'],
+                                                                               bbox=data['train_anno'])
+            data['test_images'], data['test_anno'] = self.transform['joint'](image=data['test_images'],
+                                                                             bbox=data['test_anno'], new_roll=False)
+
+        for s in ['train', 'test']:
+            assert self.mode == 'sequence' or len(data[s + '_images']) == 1, \
+                "In pair mode, num train/test frames must be 1"
+
+            # Add a uniform noise to the center pos
+            jittered_anno = [self._get_jittered_box(a, s) for a in data[s + '_anno']]
+
+            target_crops = []
+            for i, anno in enumerate(jittered_anno):
+                target_crop = prutils.crop_target_proposals(data[s + '_images'][i], anno, self.output_sz)
+                target_crops.append(target_crop)
+            # Apply transforms
+            data[s + '_images'], data[s + '_anno'] = self.transform[s](image=target_crops, bbox=jittered_anno,
+                                                                       joint=False)
+
+        # Prepare output
+        if self.mode == 'sequence':
+            data = data.apply(stack_tensors)
+        else:
+            data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
+
+        return data
+##########################################################################

@@ -12,7 +12,7 @@ def run(settings):
     # Most common settings are assigned in the settings struct
     settings.description = 'ATOM IoUNet with default settings according to the paper.'
     settings.batch_size = 64
-    settings.num_workers = 8
+    settings.num_workers = 4
     settings.print_interval = 1
     settings.normalize_mean = [0.485, 0.456, 0.406]
     settings.normalize_std = [0.229, 0.224, 0.225]
@@ -79,7 +79,7 @@ def run(settings):
                            shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor
-    net = atom_models.atom_resnet18(backbone_pretrained=True)
+    net = atom_models.iou_resnet18(backbone_pretrained=True)
     objective = nn.MSELoss()
     actor = actors.AtomActor(net=net, objective=objective)
 

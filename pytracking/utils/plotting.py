@@ -53,7 +53,7 @@ def draw_figure(fig):
     plt.pause(0.001)
 
 
-def show_tensor(a: torch.Tensor, frame_num, fig_num=None, title=None, range=(None, None), ax=None):
+def show_tensor(a: torch.Tensor, fig_num=None, title=None, range=(None, None), ax=None):
     """Display a 2D tensor.
     args:
         fig_num: Figure number.
@@ -72,9 +72,6 @@ def show_tensor(a: torch.Tensor, frame_num, fig_num=None, title=None, range=(Non
         plt.axis('equal')
         if title is not None:
             plt.title(title)
-
-        # img_path = '/home/hexd6/code/Tracking/VisTrack/pytracking/evaluation/img_result/MotorRolling/' + str(frame_num) + '.jpg'
-        # plt.savefig(img_path)
 
         draw_figure(fig)
     else:

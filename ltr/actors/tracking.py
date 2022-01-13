@@ -94,7 +94,6 @@ class KLDiMPActor(BaseActor):
         target_scores, bb_scores = self.net(train_imgs=data['train_images'],
                                             test_imgs=data['test_images'],
                                             train_bb=data['train_anno'],
-                                            # train_label=data['train_label'],  #######
                                             test_proposals=data['test_proposals'])
 
         # Reshape bb reg variables

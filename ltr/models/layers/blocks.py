@@ -34,3 +34,4 @@ class LinearBlock(nn.Module):
         if self.relu is not None:
             x = self.relu(x)
         return x.reshape(x.shape[0], -1)
+

@@ -1,15 +1,6 @@
 from pytracking.evaluation import Tracker, get_dataset, trackerlist
 
 
-def fudimp_test():
-    trackers = trackerlist('fudimp', 'dimp_awff', range(1))
-
-    dataset = get_dataset('otb', 'nfs', 'uav')
-    # dataset = get_dataset('lasot')
-
-    return trackers, dataset
-
-
 # @ author Xuedong He
 # --OUPT-- #######################################################################
 # Learning Object-Uncertainty Policy for Visual Tracking

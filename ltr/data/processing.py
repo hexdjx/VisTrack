@@ -1,4 +1,5 @@
 import torch
+import cv2 as cv
 import math
 import numpy as np
 import torchvision.transforms as transforms
@@ -876,6 +877,7 @@ class KYSProcessing(BaseProcessing):
 
         return data
 
+<<<<<<< HEAD
 
 # -- my add-- ############################################################################
 class VerifyNetProcessing(BaseProcessing):
@@ -916,10 +918,15 @@ class VerifyNetProcessing(BaseProcessing):
 
         return torch.cat((jittered_center - 0.5 * jittered_size, jittered_size), dim=0)
 
+=======
+# --AlphaRefine--###############################################################
+class SEMaskProcessing(SEProcessing):
+>>>>>>> 67ba55b4c540787997f7b894164fe2911ecc2778
     def __call__(self, data: TensorDict):
         """
         args:
             data - The input data, should contain the following fields:
+<<<<<<< HEAD
                 'train_images', test_images', 'train_anno', 'test_anno'
         returns:
             TensorDict - output data block with following fields:
@@ -1009,6 +1016,30 @@ class FusionNetProcessing(BaseProcessing):
                                                                                bbox=data['train_anno'])
             data['test_images'], data['test_anno'] = self.transform['joint'](image=data['test_images'],
                                                                              bbox=data['test_anno'], new_roll=False)
+=======
+                'train_images'
+                'test_images'
+                'train_anno'
+                'test_anno'
+
+        returns:
+            TensorDict - output data block with following fields:
+                'train_images'
+                'test_images'
+                'train_anno'
+                'test_anno'
+                'test_proposals'
+                'proposal_iou'
+        """
+        # Apply joint transforms
+        if self.transform['joint'] is not None:
+            num_train_images = len(data['train_images'])
+            all_images = data['train_images'] + data['test_images']
+            all_images_trans = self.transform['joint'](*all_images)
+
+            data['train_images'] = all_images_trans[:num_train_images]
+            data['test_images'] = all_images_trans[num_train_images:]
+>>>>>>> 67ba55b4c540787997f7b894164fe2911ecc2778
 
         for s in ['train', 'test']:
             assert self.mode == 'sequence' or len(data[s + '_images']) == 1, \
@@ -1017,6 +1048,7 @@ class FusionNetProcessing(BaseProcessing):
             # Add a uniform noise to the center pos
             jittered_anno = [self._get_jittered_box(a, s) for a in data[s + '_anno']]
 
+<<<<<<< HEAD
             target_crops = []
             for i, anno in enumerate(jittered_anno):
                 target_crop = prutils.crop_target_proposals(data[s + '_images'][i], anno, self.output_sz)
@@ -1028,8 +1060,32 @@ class FusionNetProcessing(BaseProcessing):
         # Prepare output
         if self.mode == 'sequence':
             data = data.apply(stack_tensors)
+=======
+            # Crop image region centered at jittered_anno box
+            crops, boxes = prutils.jittered_center_crop_v2(data[s + '_images'], jittered_anno, data[s + '_anno'],
+                                                              self.search_area_factor, self.output_sz, mode=cv.BORDER_CONSTANT)
+            # Apply transforms
+            data[s + '_images'] = [self.transform[s](x) for x in crops]  # x : `numpy.ndarray`
+            data[s + '_anno'] = boxes
+
+            mask_crops = prutils.jittered_center_crop_v2(data[s + '_masks'], jittered_anno, data[s + '_anno'],
+                                                            self.search_area_factor, self.output_sz,
+                                                            get_bbox_coord=False, mode=cv.BORDER_CONSTANT)
+            data[s + '_masks'] = [self.mask_np2torch(x) for x in mask_crops]
+
+        # Prepare output
+        if self.mode == 'sequence':
+            data = data.apply(prutils.stack_tensors)
+>>>>>>> 67ba55b4c540787997f7b894164fe2911ecc2778
         else:
             data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
 
         return data
+<<<<<<< HEAD
 ##########################################################################
+=======
+
+    def mask_np2torch(self, mask_np):
+        return torch.from_numpy(mask_np.transpose((2, 0, 1))).float()
+###########################################################################
+>>>>>>> 67ba55b4c540787997f7b894164fe2911ecc2778

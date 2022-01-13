@@ -44,7 +44,6 @@ def plot_scatter(psr, apce, psmd, det):
     # plt.savefig('scale_precision.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-
 #########################################################################################
 
 def draw_figure(fig):

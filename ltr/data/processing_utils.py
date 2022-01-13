@@ -1,12 +1,10 @@
+import numpy as np
 import torch
 import math
 import cv2 as cv
 import random
 import torch.nn.functional as F
 from .bounding_box_utils import rect_to_rel, rel_to_rect
-
-from pytracking.features import augmentation
-from pytracking.features.preprocessing import torch_to_numpy, numpy_to_torch
 
 
 def sample_target(im, target_bb, search_area_factor, output_sz=None, mask=None):
@@ -190,168 +188,6 @@ def perturb_box(box, min_iou=0.5, sigma_factor=0.1):
 
     return box_per, box_iou
 
-
-############################################################
-# my add
-def target_proposals(box):
-
-    radius = torch.ceil(torch.sqrt(box[2] * box[3])/2)
-
-    box_1 = torch.Tensor([box[0] - radius, box[1] - radius, box[2], box[3]]).round()
-    box_2 = torch.Tensor([box[0] + radius, box[1] - radius, box[2], box[3]]).round()
-    box_3 = torch.Tensor([box[0] + radius, box[1] + radius, box[2], box[3]]).round()
-    box_4 = torch.Tensor([box[0] - radius, box[1] + radius, box[2], box[3]]).round()
-
-    # box_1 = iou(box.view(1, 4), box_1.view(1, 4))
-    # box_2 = iou(box.view(1, 4), box_2.view(1, 4))
-    # box_3 = iou(box.view(1, 4), box_3.view(1, 4))
-    # box_4 = iou(box.view(1, 4), box_4.view(1, 4))
-
-    bboxs = torch.stack((box, box_1, box_2, box_3, box_4), dim=0)
-    return bboxs
-
-def sample_target_1(im, target_bb, output_sz=None):
-    x, y, w, h = target_bb.tolist()
-
-    x1 = round(x)
-    x2 = round(x1 + w)
-
-    y1 = round(y)
-    y2 = round(y1 + h)
-
-    x1_pad = max(0, -x1)
-    x2_pad = max(x2 - im.shape[1] + 1, 0)
-
-    y1_pad = max(0, -y1)
-    y2_pad = max(y2 - im.shape[0] + 1, 0)
-
-    # Crop target
-    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
-
-    # Pad
-    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
-
-    im_crop_padded = cv.resize(im_crop_padded, (128, 128))
-
-    return im_crop_padded
-
-
-def crop_target_proposals(im, anno, output_sz):
-    x, y, w, h = anno.tolist()
-
-    x1 = round(x)
-    x2 = round(x1 + w)
-
-    y1 = round(y)
-    y2 = round(y1 + h)
-
-    x1_pad = max(0, -x1)
-    x2_pad = max(x2 - im.shape[1] + 1, 0)
-
-    y1_pad = max(0, -y1)
-    y2_pad = max(y2 - im.shape[0] + 1, 0)
-
-    # Crop target
-    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
-
-    # Pad
-    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
-
-    im_crop_padded = cv.resize(im_crop_padded, (128, 128))
-
-    return im_crop_padded
-
-# def perturb_box_1(box, max_iou=0.1, sigma_factor=0.5):
-#     if isinstance(sigma_factor, list):
-#         # If list, sample one sigma_factor as current sigma factor
-#         c_sigma_factor = random.choice(sigma_factor)
-#     else:
-#         c_sigma_factor = sigma_factor
-#
-#     if not isinstance(c_sigma_factor, torch.Tensor):
-#         c_sigma_factor = c_sigma_factor * torch.ones(4)
-#
-#     perturb_factor = torch.sqrt(box[2] * box[3]) * c_sigma_factor
-#
-#     # multiple tries to ensure that the perturbed box has iou < max_iou with the input box
-#     for i_ in range(100):
-#         c_x = box[0] + 0.5 * box[2]
-#         c_y = box[1] + 0.5 * box[3]
-#         c_x_per = random.gauss(c_x, perturb_factor[0])
-#         c_y_per = random.gauss(c_y, perturb_factor[1])
-#
-#         w_per = random.gauss(box[2], perturb_factor[2])
-#         h_per = random.gauss(box[3], perturb_factor[3])
-#
-#         if w_per <= 1:
-#             w_per = box[2] * rand_uniform(0.15, 0.5)
-#
-#         if h_per <= 1:
-#             h_per = box[3] * rand_uniform(0.15, 0.5)
-#
-#         box_per = torch.Tensor([c_x_per - 0.5 * w_per, c_y_per - 0.5 * h_per, w_per, h_per]).round()
-#
-#
-#         box_iou = iou(box.view(1, 4), box_per.view(1, 4))
-#
-#         # if there is insufficient overlap, return
-#         if box_iou < max_iou:
-#             return box_per
-#
-#         # else reduce the perturb factor
-#         perturb_factor *= 0.9
-#
-#     return None
-
-
-# data augmentation
-    # frames_crop = numpy_to_torch(frames_crop)
-    #
-    # augs = {'fliplr': True,
-    #         'flipud': True,
-    #         'blur': [(3, 1), (1, 3), (2, 2)],
-    #         'scale': [0.5, 2]
-    #         }
-    # frames_augmentation = [augmentation.Identity()]
-    #
-    # # Add all augmentations
-    # if 'fliplr' in augs and augs['fliplr']:
-    #     frames_augmentation.append(augmentation.FlipHorizontal())
-    # if 'flipud' in augs and augs['flipud']:
-    #     frames_augmentation.append(augmentation.FlipHorizontal())
-    # # if 'rotate' in augs:
-    # #     frames_augmentation.extend([augmentation.Rotate(angle) for angle in augs['rotate']])
-    # if 'blur' in augs:
-    #     frames_augmentation.extend([augmentation.Blur(sigma) for sigma in augs['blur']])
-    # # if 'relativeshift' in augs:
-    # #     get_absolute = lambda shift: (torch.Tensor(shift) * im_shape / 2).long().tolist()
-    # #     frames_augmentation.extend(
-    # #         [augmentation.Translation(get_absolute(shift)) for shift in augs['relativeshift']])
-    #
-    # # frames_augs = torch.cat([T(frames_crop) for T in frames_augmentation])
-    # if 'scale' in augs:
-    #     frames_augmentation.extend(
-    #         [augmentation.Scale(scale_factor) for scale_factor in augs['scale']])
-    # frames_augs = []
-    # for T in frames_augmentation:
-    #     im_aug = T(frames_crop)
-    #     frames_augs.append(cv.resize(torch_to_numpy(im_aug), (output_sz, output_sz)))
-
-    # for i in range(len(proposals)):
-    # frames_crop.append(sample_only_target(f, a, output_sz)
-    #                         for f, a in zip(frames, proposals[i, :]))
-    # frames_crop.append(f_crop)
-    # return frames_augs
-
-
-# if __name__ == '__main__':
-#     im = cv.imread('/media/hexdjx/907856427856276E/OTB100/Basketball/img/0001.jpg')
-#     im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
-#     im = torch.Tensor([im])
-#     gt = torch.Tensor([[198,214,34,81]])
-#     f, b = jittered_center_crop_proposal(im, gt, gt, 2, 128)
-
-############################################################
 
 def sample_target_adaptive(im, target_bb, search_area_factor, output_sz, mode: str = 'replicate',
                            max_scale_change=None, mask=None):
@@ -791,3 +627,290 @@ def sample_box_gmm(mean_box, proposal_sigma, gt_sigma=None, num_samples=1, add_m
         gt_density = torch.cat((torch.Tensor([1]), gt_density))
 
     return proposals, proposal_density, gt_density
+
+
+# --AlphaRefine--#####################################################################
+#  for scale estimation(no square)
+def sample_target_v2(im, target_bb, search_area_factor=1.0, output_sz=None, mode=cv.BORDER_REPLICATE):
+    """ Extracts a crop centered at target_bb box, especially, search_area_factor times target_bb(Both height and width)
+
+    args:
+        im - cv image
+        target_bb - target box [x, y, w, h]
+        search_area_factor - Ratio of crop size to target size
+        output_sz - (float) Size to which the extracted crop is resized (always square). If None, no resizing is done.
+
+    returns:
+        cv image - extracted crop
+        float - the factor by which the crop has been resized to make the crop size equal output_size
+    """
+
+    x, y, w, h = target_bb.tolist()
+
+    # Crop image
+    ws = math.ceil(search_area_factor * w)
+    hs = math.ceil(search_area_factor * h)
+
+    if ws < 1 or hs < 1:
+        raise Exception('Too small bounding box.')
+
+    x1 = round(x + 0.5 * w - ws * 0.5)
+    x2 = x1 + ws
+
+    y1 = round(y + 0.5 * h - hs * 0.5)
+    y2 = y1 + hs
+
+    x1_pad = max(0, -x1)
+    x2_pad = max(x2 - im.shape[1] + 1, 0)
+
+    y1_pad = max(0, -y1)
+    y2_pad = max(y2 - im.shape[0] + 1, 0)
+
+    # Crop target
+    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
+
+    # Pad
+    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, mode)
+
+    if output_sz is not None:
+        w_rsz_f = output_sz / ws
+        h_rsz_f = output_sz / hs
+        im_crop_padded_rsz = cv.resize(im_crop_padded, (output_sz, output_sz))
+        if len(im_crop_padded_rsz.shape) == 2:
+            im_crop_padded_rsz = im_crop_padded_rsz[..., np.newaxis]
+        return im_crop_padded_rsz, h_rsz_f, w_rsz_f
+    else:
+        return im_crop_padded, 1.0, 1.0
+
+
+def transform_image_to_crop_v2(box_in: torch.Tensor, box_extract: torch.Tensor, resize_factor_h: float,
+                               resize_factor_w: float, crop_sz: torch.Tensor) -> torch.Tensor:
+    """ Transform the box co-ordinates from the original image co-ordinates to the co-ordinates of the cropped image
+    args:
+        box_in - the box for which the co-ordinates are to be transformed
+        box_extract - the box about which the image crop has been extracted.
+        resize_factor - the ratio between the original image scale and the scale of the image crop
+        crop_sz - size of the cropped image
+
+    returns:
+        torch.Tensor - transformed co-ordinates of box_in
+    """
+    box_extract_center = box_extract[0:2] + 0.5 * box_extract[2:4]
+
+    box_in_center = box_in[0:2] + 0.5 * box_in[2:4]
+
+    box_out_xc = (crop_sz[0] - 1) / 2 + (box_in_center[0] - box_extract_center[0]) * resize_factor_w
+    box_out_yc = (crop_sz[1] - 1) / 2 + (box_in_center[1] - box_extract_center[1]) * resize_factor_h
+    box_out_w = box_in[2] * resize_factor_w
+    box_out_h = box_in[3] * resize_factor_h
+
+    '''2019.12.28 为了避免出现(x1,y1)小于0,或者(x2,y2)大于256的情况,这里我对它们加上了一些限制
+    max_sz = crop_sz[0].item()
+    box_out_x1 = torch.clamp(box_out_xc - 0.5 * box_out_w,0,max_sz)
+    box_out_y1 = torch.clamp(box_out_yc - 0.5 * box_out_h,0,max_sz)
+    box_out_x2 = torch.clamp(box_out_xc + 0.5 * box_out_w,0,max_sz)
+    box_out_y2 = torch.clamp(box_out_yc + 0.5 * box_out_h,0,max_sz)
+    box_out_w_new = box_out_x2 - box_out_x1
+    box_out_h_new = box_out_y2 - box_out_y1
+    box_out = torch.stack((box_out_x1, box_out_y1, box_out_w_new, box_out_h_new))
+    '''
+    box_out = torch.cat((box_out_xc - 0.5 * box_out_w, box_out_yc - 0.5 * box_out_h, box_out_w, box_out_h))
+    return box_out
+
+
+def jittered_center_crop_v2(frames, box_extract, box_gt, search_area_factor, output_sz, get_bbox_coord=True,
+                            mode=cv.BORDER_REPLICATE):
+    """
+    Crop a patch centered at box_extract. The height and width of cropped region is search_area_factor times that of box_extract.
+    The extracted crops are then resized to output_sz. Further, the co-ordinates of the box box_gt are transformed to the image crop co-ordinates
+    args:
+        frames - list of frames
+        box_extract - list of boxes of same length as frames. The crops are extracted using anno_extract
+        box_gt - list of boxes of same length as frames. The co-ordinates of these boxes are transformed from
+                    image co-ordinates to the crop co-ordinates
+        search_area_factor - The area of the extracted crop is search_area_factor^2 times box_extract area
+        output_sz - The size to which the extracted crops are resized
+
+    returns:
+        list - list of image crops
+        list - box_gt location in the crop co-ordinates
+    """
+
+    crops_resize_factors = [sample_target_v2(f, a, search_area_factor, output_sz, mode=mode)
+                            for f, a in zip(frames, box_extract)]
+
+    frames_crop, resize_factors_h, resize_factors_w = zip(*crops_resize_factors)
+    if get_bbox_coord:
+        crop_sz = torch.Tensor([output_sz, output_sz])
+
+        # find the bb location in the crop
+        '''get GT's cooridinate on the cropped patch'''
+        box_crop = [transform_image_to_crop_v2(a_gt, a_ex, h_rsf, w_rsf, crop_sz)
+                    for a_gt, a_ex, h_rsf, w_rsf in zip(box_gt, box_extract, resize_factors_h, resize_factors_w)]
+
+        return frames_crop, box_crop
+    else:
+        return frames_crop
+#################################################################################
+
+# --my add--#####################################################################
+def target_proposals(box):
+    radius = torch.ceil(torch.sqrt(box[2] * box[3]) / 2)
+
+    box_1 = torch.Tensor([box[0] - radius, box[1] - radius, box[2], box[3]]).round()
+    box_2 = torch.Tensor([box[0] + radius, box[1] - radius, box[2], box[3]]).round()
+    box_3 = torch.Tensor([box[0] + radius, box[1] + radius, box[2], box[3]]).round()
+    box_4 = torch.Tensor([box[0] - radius, box[1] + radius, box[2], box[3]]).round()
+
+    # box_1 = iou(box.view(1, 4), box_1.view(1, 4))
+    # box_2 = iou(box.view(1, 4), box_2.view(1, 4))
+    # box_3 = iou(box.view(1, 4), box_3.view(1, 4))
+    # box_4 = iou(box.view(1, 4), box_4.view(1, 4))
+
+    bboxs = torch.stack((box, box_1, box_2, box_3, box_4), dim=0)
+    return bboxs
+
+
+def sample_target_1(im, target_bb, output_sz=None):
+    x, y, w, h = target_bb.tolist()
+
+    x1 = round(x)
+    x2 = round(x1 + w)
+
+    y1 = round(y)
+    y2 = round(y1 + h)
+
+    x1_pad = max(0, -x1)
+    x2_pad = max(x2 - im.shape[1] + 1, 0)
+
+    y1_pad = max(0, -y1)
+    y2_pad = max(y2 - im.shape[0] + 1, 0)
+
+    # Crop target
+    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
+
+    # Pad
+    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
+
+    im_crop_padded = cv.resize(im_crop_padded, (128, 128))
+
+    return im_crop_padded
+
+
+def crop_target_proposals(im, anno, output_sz):
+    x, y, w, h = anno.tolist()
+
+    x1 = round(x)
+    x2 = round(x1 + w)
+
+    y1 = round(y)
+    y2 = round(y1 + h)
+
+    x1_pad = max(0, -x1)
+    x2_pad = max(x2 - im.shape[1] + 1, 0)
+
+    y1_pad = max(0, -y1)
+    y2_pad = max(y2 - im.shape[0] + 1, 0)
+
+    # Crop target
+    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
+
+    # Pad
+    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
+
+    im_crop_padded = cv.resize(im_crop_padded, (128, 128))
+
+    return im_crop_padded
+
+
+# def perturb_box_1(box, max_iou=0.1, sigma_factor=0.5):
+#     if isinstance(sigma_factor, list):
+#         # If list, sample one sigma_factor as current sigma factor
+#         c_sigma_factor = random.choice(sigma_factor)
+#     else:
+#         c_sigma_factor = sigma_factor
+#
+#     if not isinstance(c_sigma_factor, torch.Tensor):
+#         c_sigma_factor = c_sigma_factor * torch.ones(4)
+#
+#     perturb_factor = torch.sqrt(box[2] * box[3]) * c_sigma_factor
+#
+#     # multiple tries to ensure that the perturbed box has iou < max_iou with the input box
+#     for i_ in range(100):
+#         c_x = box[0] + 0.5 * box[2]
+#         c_y = box[1] + 0.5 * box[3]
+#         c_x_per = random.gauss(c_x, perturb_factor[0])
+#         c_y_per = random.gauss(c_y, perturb_factor[1])
+#
+#         w_per = random.gauss(box[2], perturb_factor[2])
+#         h_per = random.gauss(box[3], perturb_factor[3])
+#
+#         if w_per <= 1:
+#             w_per = box[2] * rand_uniform(0.15, 0.5)
+#
+#         if h_per <= 1:
+#             h_per = box[3] * rand_uniform(0.15, 0.5)
+#
+#         box_per = torch.Tensor([c_x_per - 0.5 * w_per, c_y_per - 0.5 * h_per, w_per, h_per]).round()
+#
+#
+#         box_iou = iou(box.view(1, 4), box_per.view(1, 4))
+#
+#         # if there is insufficient overlap, return
+#         if box_iou < max_iou:
+#             return box_per
+#
+#         # else reduce the perturb factor
+#         perturb_factor *= 0.9
+#
+#     return None
+
+
+# data augmentation
+# frames_crop = numpy_to_torch(frames_crop)
+#
+# augs = {'fliplr': True,
+#         'flipud': True,
+#         'blur': [(3, 1), (1, 3), (2, 2)],
+#         'scale': [0.5, 2]
+#         }
+# frames_augmentation = [augmentation.Identity()]
+#
+# # Add all augmentations
+# if 'fliplr' in augs and augs['fliplr']:
+#     frames_augmentation.append(augmentation.FlipHorizontal())
+# if 'flipud' in augs and augs['flipud']:
+#     frames_augmentation.append(augmentation.FlipHorizontal())
+# # if 'rotate' in augs:
+# #     frames_augmentation.extend([augmentation.Rotate(angle) for angle in augs['rotate']])
+# if 'blur' in augs:
+#     frames_augmentation.extend([augmentation.Blur(sigma) for sigma in augs['blur']])
+# # if 'relativeshift' in augs:
+# #     get_absolute = lambda shift: (torch.Tensor(shift) * im_shape / 2).long().tolist()
+# #     frames_augmentation.extend(
+# #         [augmentation.Translation(get_absolute(shift)) for shift in augs['relativeshift']])
+#
+# # frames_augs = torch.cat([T(frames_crop) for T in frames_augmentation])
+# if 'scale' in augs:
+#     frames_augmentation.extend(
+#         [augmentation.Scale(scale_factor) for scale_factor in augs['scale']])
+# frames_augs = []
+# for T in frames_augmentation:
+#     im_aug = T(frames_crop)
+#     frames_augs.append(cv.resize(torch_to_numpy(im_aug), (output_sz, output_sz)))
+
+# for i in range(len(proposals)):
+# frames_crop.append(sample_only_target(f, a, output_sz)
+#                         for f, a in zip(frames, proposals[i, :]))
+# frames_crop.append(f_crop)
+# return frames_augs
+
+
+# if __name__ == '__main__':
+#     im = cv.imread('/media/hexdjx/907856427856276E/OTB100/Basketball/img/0001.jpg')
+#     im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+#     im = torch.Tensor([im])
+#     gt = torch.Tensor([[198,214,34,81]])
+#     f, b = jittered_center_crop_proposal(im, gt, gt, 2, 128)
+
+############################################################

@@ -751,6 +751,8 @@ def jittered_center_crop_v2(frames, box_extract, box_gt, search_area_factor, out
         return frames_crop, box_crop
     else:
         return frames_crop
+
+
 #################################################################################
 
 # --my add--#####################################################################
@@ -913,4 +915,126 @@ def crop_target_proposals(im, anno, output_sz):
 #     gt = torch.Tensor([[198,214,34,81]])
 #     f, b = jittered_center_crop_proposal(im, gt, gt, 2, 128)
 
+############################################################
+
+# --MDNet--#################################################
+# function: sampling required pos/neg samples
+def overlap_ratio(rect1, rect2):
+    '''
+    Compute overlap ratio between two rects
+    - rect: 1d array of [x,y,w,h] or
+            2d array of N x [x,y,w,h]
+    '''
+
+    if rect1.ndim == 1:
+        rect1 = rect1[None, :]
+    if rect2.ndim == 1:
+        rect2 = rect2[None, :]
+
+    left = np.maximum(rect1[:, 0], rect2[:, 0])
+    right = np.minimum(rect1[:, 0] + rect1[:, 2], rect2[:, 0] + rect2[:, 2])
+    top = np.maximum(rect1[:, 1], rect2[:, 1])
+    bottom = np.minimum(rect1[:, 1] + rect1[:, 3], rect2[:, 1] + rect2[:, 3])
+
+    intersect = np.maximum(0, right - left) * np.maximum(0, bottom - top)
+    union = rect1[:, 2] * rect1[:, 3] + rect2[:, 2] * rect2[:, 3] - intersect
+    iou = np.clip(intersect / union, 0, 1)
+    return iou
+
+# for example:
+# pos_examples = SampleGenerator('gaussian', image.size, 0.1, 1.3)(
+#             target_bbox, 500, [0.7, 1])
+
+# pos_examples = SampleGenerator('gaussian', image.size, 0.1, 1.3)(
+#             target_bbox, 500, [0.7, 1])
+class SampleGenerator():
+    def __init__(self, type_, img_size, trans=1, scale=1, aspect=None, valid=False):
+        self.type = type_
+        self.img_size = np.array(img_size)  # (w, h)
+        self.trans = trans
+        self.scale = scale
+        self.aspect = aspect
+        self.valid = valid
+
+    def _gen_samples(self, bb, n):
+        #
+        # bb: target bbox (min_x,min_y,w,h)
+        bb = np.array(bb, dtype='float32')
+
+        # (center_x, center_y, w, h)
+        sample = np.array([bb[0] + bb[2] / 2, bb[1] + bb[3] / 2, bb[2], bb[3]], dtype='float32')
+        samples = np.tile(sample[None, :], (n, 1))
+
+        # vary aspect ratio
+        if self.aspect is not None:
+            ratio = np.random.rand(n, 2) * 2 - 1
+            samples[:, 2:] *= self.aspect ** ratio
+
+        # sample generation
+        if self.type == 'gaussian':
+            samples[:, :2] += self.trans * np.mean(bb[2:]) * np.clip(0.5 * np.random.randn(n, 2), -1, 1)
+            samples[:, 2:] *= self.scale ** np.clip(0.5 * np.random.randn(n, 1), -1, 1)
+
+        elif self.type == 'uniform':
+            samples[:, :2] += self.trans * np.mean(bb[2:]) * (np.random.rand(n, 2) * 2 - 1)
+            samples[:, 2:] *= self.scale ** (np.random.rand(n, 1) * 2 - 1)
+
+        elif self.type == 'whole':
+            m = int(2 * np.sqrt(n))
+            xy = np.dstack(np.meshgrid(np.linspace(0, 1, m), np.linspace(0, 1, m))).reshape(-1, 2)
+            xy = np.random.permutation(xy)[:n]
+            samples[:, :2] = bb[2:] / 2 + xy * (self.img_size - bb[2:] / 2 - 1)
+            samples[:, 2:] *= self.scale ** (np.random.rand(n, 1) * 2 - 1)
+
+        # adjust bbox range
+        samples[:, 2:] = np.clip(samples[:, 2:], 10, self.img_size - 10)
+        if self.valid:
+            samples[:, :2] = np.clip(samples[:, :2], samples[:, 2:] / 2, self.img_size - samples[:, 2:] / 2 - 1)
+        else:
+            samples[:, :2] = np.clip(samples[:, :2], 0, self.img_size)
+
+        # (min_x, min_y, w, h)
+        samples[:, :2] -= samples[:, 2:] / 2
+
+        return samples
+
+    def __call__(self, bbox, n, overlap_range=None, scale_range=None):
+
+        if overlap_range is None and scale_range is None:
+            return self._gen_samples(bbox, n)
+
+        else:
+            samples = None
+            remain = n
+            factor = 2
+            while remain > 0 and factor < 16:
+                samples_ = self._gen_samples(bbox, remain * factor)
+
+                idx = np.ones(len(samples_), dtype=bool)
+                if overlap_range is not None:
+                    r = overlap_ratio(samples_, bbox)
+                    idx *= (r >= overlap_range[0]) * (r <= overlap_range[1])
+                if scale_range is not None:
+                    s = np.prod(samples_[:, 2:], axis=1) / np.prod(bbox[2:])
+                    idx *= (s >= scale_range[0]) * (s <= scale_range[1])
+
+                samples_ = samples_[idx, :]
+                samples_ = samples_[:min(remain, len(samples_))]
+                if samples is None:
+                    samples = samples_
+                else:
+                    samples = np.concatenate([samples, samples_])
+                remain = n - len(samples)
+                factor = factor * 2
+
+            return samples
+
+    def set_type(self, type_):
+        self.type = type_
+
+    def set_trans(self, trans):
+        self.trans = trans
+
+    def expand_trans(self, trans_limit):
+        self.trans = min(self.trans * 1.1, trans_limit)
 ############################################################

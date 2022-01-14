@@ -276,8 +276,6 @@ def resnet50(output_layers=None, pretrained=False, **kwargs):
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
     return model
-<<<<<<< HEAD
-=======
 
 def resnet101(output_layers=None, pretrained=False, **kwargs):
     """Constructs a ResNet-101 model.
@@ -296,4 +294,3 @@ def resnet101(output_layers=None, pretrained=False, **kwargs):
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
 
     return model
->>>>>>> 67ba55b4c540787997f7b894164fe2911ecc2778

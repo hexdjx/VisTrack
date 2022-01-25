@@ -1,7 +1,7 @@
-from pytracking.evaluation import Tracker, get_dataset, trackerlist
-
+from pytracking.evaluation import get_dataset, trackerlist
 
 # @ author Xuedong He
+
 # --OUPT-- #######################################################################
 # Learning Object-Uncertainty Policy for Visual Tracking
 def oupt_otb():
@@ -43,7 +43,8 @@ def oupt_nfs_uav():
 
 def oupt_lasot():
     # Run OUPT on LaSOT dataset
-    trackers = trackerlist('oupt', 'proupt50', range(1))
+    trackers = trackers = trackerlist('oupt', 'oupt50', range(1)) + \
+               trackerlist('oupt', 'proupt50', range(1))
 
     dataset = get_dataset('lasot')
     return trackers, dataset
@@ -127,5 +128,4 @@ def ecoS_test():
                trackerlist('vslt', 'ecoS_var_ratio', range(1))
     dataset = get_dataset('otb', 'uav', 'tpl', 'lasot')
     return trackers, dataset
-
-#######################################################################
+################################################################################

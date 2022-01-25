@@ -412,7 +412,6 @@ class OUPT(BaseTracker):
         with torch.no_grad():
             target_feat = self.net.extract_backbone(target_patch)
         return target_feat
-
     #################################################################
 
     def generate_init_samples(self, im: torch.Tensor) -> TensorList:

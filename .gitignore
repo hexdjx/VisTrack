@@ -5,5 +5,5 @@
 *.pytest_cache
 *.ipynb_checkpoints/
 /pytracking/results/
-/pytracking/VOT/*workspace/
 /pytracking/analysis/utils/results/
+/pytracking/VOT/*workspace/

@@ -5,7 +5,8 @@ from pytracking.utils.loading import load_network
 class NetWrapper:
     """Used for wrapping networks in pytracking.
     Network modules and functions can be accessed directly as if they were members of this class."""
-    _rec_iter=0
+    _rec_iter = 0
+
     def __init__(self, net_path, use_gpu=True, initialize=False, **kwargs):
         self.net_path = net_path
         self.use_gpu = use_gpu
@@ -56,7 +57,7 @@ class NetWithBackbone(NetWrapper):
         """Normalize the image with the mean and standard deviation used by the network."""
 
         if self.image_format in ['rgb', 'bgr']:
-            im = im/255
+            im = im / 255
 
         if self.image_format in ['bgr', 'bgr255']:
             im = im[:, [2, 1, 0], :, :]

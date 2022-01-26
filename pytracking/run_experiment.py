@@ -27,9 +27,9 @@ def run_experiment(experiment_module: str, experiment_name: str, debug=0, thread
 
 def main():
     parser = argparse.ArgumentParser(description='Run tracker.')
-    parser.add_argument('--experiment_module', type=str, default='myexperiments',
+    parser.add_argument('--experiment_module', type=str, default='myexperiment',
                         help='Name of experiment module in the experiments/ folder.')
-    parser.add_argument('--experiment_name', type=str, default='fudimp_test', help='Name of the experiment function.')
+    parser.add_argument('--experiment_name', type=str, default='rvt_test', help='Name of the experiment function.')
     parser.add_argument('--debug', type=int, default=0, help='Debug level.')
     parser.add_argument('--threads', type=int, default=0, help='Number of threads.')
 

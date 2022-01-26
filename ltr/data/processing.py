@@ -878,7 +878,7 @@ class KYSProcessing(BaseProcessing):
         return data
 
 
-# -- RVT-- ###############################################################
+# -- RVT-- #######################################################################################
 class VerifyNetProcessing(BaseProcessing):
     def __init__(self, search_area_factor, output_sz, center_jitter_factor, scale_jitter_factor,
                  mode='pair', *args, **kwargs):
@@ -1032,4 +1032,4 @@ class VerifyNetGaussProcessing(BaseProcessing):
             data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
 
         return data
-##########################################################################
+########################################################################################################

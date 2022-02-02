@@ -79,7 +79,7 @@ def run(settings):
                            shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor
-    net = atom_models.iou_resnet18(backbone_pretrained=True)
+    net = atom_models.atom_resnet18(backbone_pretrained=True)
     objective = nn.MSELoss()
     actor = actors.AtomActor(net=net, objective=objective)
 

@@ -11,7 +11,7 @@ import ltr.data.transforms as tfm
 def run(settings):
     # Most common settings are assigned in the settings struct
     settings.description = 'ATOM IoUNet with default settings, but additionally using GOT10k for training.'
-    settings.batch_size = 2 #64
+    settings.batch_size = 64
     settings.num_workers = 8
     settings.print_interval = 1
     settings.normalize_mean = [0.485, 0.456, 0.406]
@@ -64,24 +64,23 @@ def run(settings):
                                                     joint_transform=transform_joint)
 
     # The sampler for training
-    dataset_train = sampler.ATOMSampler([got10k_train], [1],
-                                samples_per_epoch=1000*settings.batch_size, max_gap=50, processing=data_processing_train)
-
-    # dataset_train = sampler.ATOMSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1,1,1,1],
-    #                             samples_per_epoch=1000*settings.batch_size, max_gap=50, processing=data_processing_train)
-
+    dataset_train = sampler.ATOMSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1, 1, 1, 1],
+                                        samples_per_epoch=1000 * settings.batch_size, max_gap=50,
+                                        processing=data_processing_train)
 
     # The loader for training
-    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size,
+                             num_workers=settings.num_workers,
                              shuffle=True, drop_last=True, stack_dim=1)
 
     # The sampler for validation
-    # dataset_val = sampler.ATOMSampler([got10k_val], [1], samples_per_epoch=500*settings.batch_size, max_gap=50,
-    #                                   processing=data_processing_val)
+    dataset_val = sampler.ATOMSampler([got10k_val], [1], samples_per_epoch=500 * settings.batch_size, max_gap=50,
+                                      processing=data_processing_val)
 
     # The loader for validation
-    # loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size, num_workers=settings.num_workers,
-    #                        shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
+    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size,
+                           num_workers=settings.num_workers,
+                           shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor
     net = atom_models.atom_resnet18(backbone_pretrained=True)
@@ -93,8 +92,7 @@ def run(settings):
     lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.2)
 
     # Create trainer
-    # trainer = LTRTrainer(actor, [loader_train, loader_val], optimizer, settings, lr_scheduler)
-    trainer = LTRTrainer(actor, [loader_train], optimizer, settings, lr_scheduler)
+    trainer = LTRTrainer(actor, [loader_train, loader_val], optimizer, settings, lr_scheduler)
 
     # Run training (set fail_safe=False if you are debugging)
     trainer.train(50, load_latest=True, fail_safe=False)

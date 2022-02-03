@@ -12,7 +12,7 @@ def run(settings):
     # Most common settings are assigned in the settings struct
     settings.description = 'ATOM using the probabilistic maximum likelihood trained regression model for bounding-box' \
                            'regression presented in [https://arxiv.org/abs/1909.12297].'
-    settings.batch_size = 16 # 64
+    settings.batch_size = 64
     settings.num_workers = 8
     settings.print_interval = 1
     settings.normalize_mean = [0.485, 0.456, 0.406]
@@ -24,10 +24,10 @@ def run(settings):
     settings.scale_jitter_factor = {'train': 0, 'test': 0.5}
 
     # Train datasets
-    # lasot_train = Lasot(settings.env.lasot_dir, split='train')
+    lasot_train = Lasot(settings.env.lasot_dir, split='train')
     got10k_train = Got10k(settings.env.got10k_dir, split='vottrain')
-    # trackingnet_train = TrackingNet(settings.env.trackingnet_dir, set_ids=list(range(4)))
-    # coco_train = MSCOCOSeq(settings.env.coco_dir)
+    trackingnet_train = TrackingNet(settings.env.trackingnet_dir, set_ids=list(range(4)))
+    coco_train = MSCOCOSeq(settings.env.coco_dir)
 
     # Validation datasets
     got10k_val = Got10k(settings.env.got10k_dir, split='votval')
@@ -66,22 +66,22 @@ def run(settings):
                                                        joint_transform=transform_joint)
 
     # The sampler for training #1000
-    # dataset_train = sampler.ATOMSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1,1,1,1],
-    #                             samples_per_epoch=10*settings.batch_size, max_gap=200, processing=data_processing_train)
-    dataset_train = sampler.ATOMSampler([got10k_train], [1],
+    dataset_train = sampler.ATOMSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1, 1, 1, 1],
                                         samples_per_epoch=10 * settings.batch_size, max_gap=200,
                                         processing=data_processing_train)
 
     # The loader for training
-    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size,
+                             num_workers=settings.num_workers,
                              shuffle=True, drop_last=True, stack_dim=1)
 
     # The sampler for validation
-    dataset_val = sampler.ATOMSampler([got10k_val], [1], samples_per_epoch=5*settings.batch_size, max_gap=200,
+    dataset_val = sampler.ATOMSampler([got10k_val], [1], samples_per_epoch=5 * settings.batch_size, max_gap=200,
                                       processing=data_processing_val)
 
     # The loader for validation #500
-    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size,
+                           num_workers=settings.num_workers,
                            shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor

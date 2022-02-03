@@ -28,7 +28,7 @@ def run(settings):
     coco_train = MSCOCOSeq(settings.env.coco_dir)
 
     # Validation datasets
-    trackingnet_val = TrackingNet(settings.env.trackingnet_dir, set_ids=list(range(11,12)))
+    trackingnet_val = TrackingNet(settings.env.trackingnet_dir, set_ids=list(range(11, 12)))
 
     # The joint augmentation transform, that is applied to the pairs jointly
     transform_joint = tfm.Transform(tfm.ToGrayscale(probability=0.05))
@@ -63,19 +63,22 @@ def run(settings):
                                                     joint_transform=transform_joint)
 
     # The sampler for training
-    dataset_train = sampler.ATOMSampler([lasot_train, trackingnet_train, coco_train], [1,1,1],
-                                samples_per_epoch=1000*settings.batch_size, max_gap=50, processing=data_processing_train)
+    dataset_train = sampler.ATOMSampler([lasot_train, trackingnet_train, coco_train], [1, 1, 1],
+                                        samples_per_epoch=1000 * settings.batch_size, max_gap=50,
+                                        processing=data_processing_train)
 
     # The loader for training
-    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size,
+                             num_workers=settings.num_workers,
                              shuffle=True, drop_last=True, stack_dim=1)
 
     # The sampler for validation
-    dataset_val = sampler.ATOMSampler([trackingnet_val], [1], samples_per_epoch=500*settings.batch_size, max_gap=50,
-                              processing=data_processing_val)
+    dataset_val = sampler.ATOMSampler([trackingnet_val], [1], samples_per_epoch=500 * settings.batch_size, max_gap=50,
+                                      processing=data_processing_val)
 
     # The loader for validation
-    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size,
+                           num_workers=settings.num_workers,
                            shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor

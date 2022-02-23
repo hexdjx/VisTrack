@@ -1,10 +1,10 @@
 
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
-from ltr.models.correlation.utils import *
+from ltr.models.neck.utils import *
 
 
 def pixel_corr(x, kernel):
-    """pixel-wise correlation"""
+    """pixel-wise neck"""
     size = kernel.size()
     CORR = []
     Kernels = []
@@ -123,7 +123,7 @@ class PixelCorr(nn.Module):
         assert len(feat2) == 1
         feat2 = feat2[0]
 
-        # Step1: pixel-wise correlation
+        # Step1: pixel-wise neck
         feat_corr = pixel_corr(feat2, self.ref_kernel)
 
         # Step2: channel attention: Squeeze and Excitation

@@ -23,7 +23,7 @@ def run(settings):
     settings.normalize_mean = [0.485, 0.456, 0.406]
     settings.normalize_std = [0.229, 0.224, 0.225]
     settings.search_area_factor = 6.0
-    settings.output_sigma_factor = 1/4
+    settings.output_sigma_factor = 1 / 4
     settings.target_filter_sz = 4
     settings.feature_sz = 22
     settings.output_sz = settings.feature_sz * 16
@@ -41,7 +41,6 @@ def run(settings):
     # Validation datasets
     got10k_val = Got10k(settings.env.got10k_dir, split='votval')
 
-
     # Data transform
     transform_joint = tfm.Transform(tfm.ToGrayscale(probability=0.05),
                                     tfm.RandomHorizontalFlip(probability=0.5))
@@ -56,8 +55,10 @@ def run(settings):
     # The tracking pairs processing module
     output_sigma = settings.output_sigma_factor / settings.search_area_factor
     proposal_params = {'boxes_per_frame': 128, 'gt_sigma': (0.05, 0.05), 'proposal_sigma': [(0.05, 0.05), (0.5, 0.5)]}
-    label_params = {'feature_sz': settings.feature_sz, 'sigma_factor': output_sigma, 'kernel_sz': settings.target_filter_sz}
-    label_density_params = {'feature_sz': settings.feature_sz, 'sigma_factor': output_sigma, 'kernel_sz': settings.target_filter_sz}
+    label_params = {'feature_sz': settings.feature_sz, 'sigma_factor': output_sigma,
+                    'kernel_sz': settings.target_filter_sz}
+    label_density_params = {'feature_sz': settings.feature_sz, 'sigma_factor': output_sigma,
+                            'kernel_sz': settings.target_filter_sz}
 
     data_processing_train = processing.KLDiMPProcessing(search_area_factor=settings.search_area_factor,
                                                         output_sz=settings.output_sz,
@@ -86,11 +87,12 @@ def run(settings):
                                                       joint_transform=transform_joint)
 
     # Train sampler and loader
-    dataset_train = sampler.DiMPSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1,1,1,1],
+    dataset_train = sampler.DiMPSampler([lasot_train, got10k_train, trackingnet_train, coco_train], [1, 1, 1, 1],
                                         samples_per_epoch=40000, max_gap=200, num_test_frames=3, num_train_frames=3,
                                         processing=data_processing_train)
 
-    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_train = LTRLoader('train', dataset_train, training=True, batch_size=settings.batch_size,
+                             num_workers=settings.num_workers,
                              shuffle=True, drop_last=True, stack_dim=1)
 
     # Validation samplers and loaders
@@ -98,20 +100,22 @@ def run(settings):
                                       num_test_frames=3, num_train_frames=3,
                                       processing=data_processing_val)
 
-    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size, num_workers=settings.num_workers,
+    loader_val = LTRLoader('val', dataset_val, training=False, batch_size=settings.batch_size,
+                           num_workers=settings.num_workers,
                            shuffle=False, drop_last=True, epoch_interval=5, stack_dim=1)
 
     # Create network and actor
     net = dimpnet.dimpnet50_simple(filter_size=settings.target_filter_sz, backbone_pretrained=True, optim_iter=5,
-                            clf_feat_norm=True, clf_feat_blocks=0, final_conv=True, out_feature_dim=512,
-                            optim_init_reg=0.1, score_act='relu', hinge_threshold=settings.hinge_threshold,
-                                  activation_leak=0.1, frozen_backbone_layers=['conv1', 'bn1', 'layer1', 'layer2'])
+                                   clf_feat_norm=True, clf_feat_blocks=0, final_conv=True, out_feature_dim=512,
+                                   optim_init_reg=0.1, score_act='relu', hinge_threshold=settings.hinge_threshold,
+                                   activation_leak=0.1, frozen_backbone_layers=['conv1', 'bn1', 'layer1', 'layer2'])
 
     # Wrap the network for multi GPU training
     if settings.multi_gpu:
         net = MultiGPU(net, dim=1)
 
-    objective = {'bb_ce': klreg_losses.KLRegression(), 'test_clf': ltr_losses.LBHinge(threshold=settings.hinge_threshold)}
+    objective = {'bb_ce': klreg_losses.KLRegression(),
+                 'test_clf': ltr_losses.LBHinge(threshold=settings.hinge_threshold)}
 
     loss_weight = {'bb_ce': 0.01, 'test_clf': 100, 'test_init_clf': 100, 'test_iter_clf': 400}
 

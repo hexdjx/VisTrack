@@ -1,9 +1,9 @@
 
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
-from ltr.models.correlation.utils import *
+from ltr.models.neck.utils import *
 
 def naive_corr(x, kernel):
-    """group conv2d to calculate cross correlation, fast version
+    """group conv2d to calculate cross neck, fast version
     """
     batch = kernel.size()[0]
     pk = kernel.view(-1, x.size()[1], kernel.size()[2], kernel.size()[3])
@@ -113,7 +113,7 @@ class NaiveCorr(nn.Module):
         """fuse features from reference and test branch"""
         if len(feat2) == 1:
             feat2 = feat2[0].contiguous()
-        '''Step1: Naive correlation'''
+        '''Step1: Naive neck'''
         feat_corr = naive_corr(feat2, self.ref_kernel)
         feat_corr = F.interpolate(self.adjust_layer(feat_corr), size=(16, 16), mode='bilinear')  # (batch,64,16,16)
 

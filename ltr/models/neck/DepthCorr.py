@@ -1,10 +1,10 @@
 
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
-from ltr.models.correlation.utils import *
+from ltr.models.neck.utils import *
 
 
 def depth_corr(x, kernel):
-    """depthwise cross correlation
+    """depthwise cross neck
     """
     batch = kernel.size(0)
     channel = kernel.size(1)
@@ -112,7 +112,7 @@ class Depth_Corr(nn.Module):
         """fuse features from reference and test branch"""
         if len(feat2) == 1:
             feat2 = feat2[0]
-        '''Step1: depth-wise correlation'''
+        '''Step1: depth-wise neck'''
         feat_corr = depth_corr(feat2, self.ref_kernel)  # (batch,1024,5,5)
         feat_corr = F.interpolate(self.adjust_layer(feat_corr), size=(16, 16), mode='bilinear')  # (batch,64,16,16)
 

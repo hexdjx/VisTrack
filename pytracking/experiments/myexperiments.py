@@ -1,6 +1,53 @@
 from pytracking.evaluation import get_dataset, trackerlist
 
+
 # @ author Xuedong He
+
+# --RVT-- ######################################################################
+# Reliable Verifier
+
+def dimp_test():
+    # origin super dimp exclude advanced localization
+    trackers = trackerlist('dimp', 'super_dimp', range(1)) + \
+               trackerlist('dimp', 'super_dimp_no_al', range(1))
+
+    dataset = get_dataset('otb', 'uav', 'nfs')
+
+    # dataset = get_dataset('lasot')
+    # dataset = get_dataset('trackingnet')
+
+    return trackers, dataset
+
+
+def rvt_test():
+    # adaptive threshold
+    # trackers = trackerlist('rvt', 'rvt_0', range(1)) + \
+    #            trackerlist('rvt', 'rvt_1', range(1)) + \
+    #            trackerlist('rvt', 'rvt_2', range(1)) + \
+    #            trackerlist('rvt', 'rvt_3', range(1)) + \
+    #            trackerlist('rvt', 'rvt_4', range(1)) + \
+    #            trackerlist('rvt', 'rvt_5', range(1)) + \
+    #            trackerlist('rvt', 'rvt_6', range(1)) + \
+    #            trackerlist('rvt', 'rvt_7', range(1)) + \
+    #            trackerlist('rvt', 'rvt_8', range(1))
+
+    # gauss sampling
+    # trackers = trackerlist('rvt', 'rvt_gauss', range(1))
+
+    # Portability test
+    # trackers = trackerlist('rvt', 'dimp50_rv', range(1)) + \
+    #            trackerlist('rvt', 'prdimp50_rv', range(1)) + \
+    #            trackerlist('dimp', 'dimp50_no_al', range(1)) + \
+    #            trackerlist('dimp', 'prdimp50_no_al', range(1))
+
+    trackers = trackerlist('rvt', 'rvt', range(1))
+
+    dataset = get_dataset('otb', 'uav', 'nfs')
+
+    # dataset = get_dataset('lasot')
+    # dataset = get_dataset('trackingnet')
+    return trackers, dataset
+
 
 # --OUPT-- #######################################################################
 # Learning Object-Uncertainty Policy for Visual Tracking
@@ -44,7 +91,7 @@ def oupt_nfs_uav():
 def oupt_lasot():
     # Run OUPT on LaSOT dataset
     trackers = trackers = trackerlist('oupt', 'oupt50', range(1)) + \
-               trackerlist('oupt', 'proupt50', range(1))
+                          trackerlist('oupt', 'proupt50', range(1))
 
     dataset = get_dataset('lasot')
     return trackers, dataset

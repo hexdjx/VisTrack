@@ -1032,4 +1032,4 @@ class VerifyNetGaussProcessing(BaseProcessing):
             data = data.apply(lambda x: x[0] if isinstance(x, list) else x)
 
         return data
-########################################################################################################
+##################################################################################

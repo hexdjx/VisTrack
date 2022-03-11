@@ -12,16 +12,16 @@ from .optim import ConvProblem, FactorizedConvProblem
 from pytracking.features import augmentation
 import ltr.data.bounding_box_utils as bbutils
 
+from ltr.models.utils import get_target_probability
+from pytracking.features.preprocessing import sample_patch
 
 class ATOM(BaseTracker):
-
     multiobj_mode = 'parallel'
 
     def initialize_features(self):
         if not getattr(self, 'features_initialized', False):
             self.params.features.initialize()
         self.features_initialized = True
-
 
     def initialize(self, image, info: dict) -> dict:
         state = info['init_bbox']
@@ -43,16 +43,16 @@ class ATOM(BaseTracker):
         tic = time.time()
 
         # Get position and size
-        self.pos = torch.Tensor([state[1] + (state[3] - 1)/2, state[0] + (state[2] - 1)/2])
+        self.pos = torch.Tensor([state[1] + (state[3] - 1) / 2, state[0] + (state[2] - 1) / 2])
         self.target_sz = torch.Tensor([state[3], state[2]])
 
         # Set search area
         self.target_scale = 1.0
         search_area = torch.prod(self.target_sz * self.params.search_area_scale).item()
         if search_area > self.params.max_image_sample_size:
-            self.target_scale =  math.sqrt(search_area / self.params.max_image_sample_size)
+            self.target_scale = math.sqrt(search_area / self.params.max_image_sample_size)
         elif search_area < self.params.min_image_sample_size:
-            self.target_scale =  math.sqrt(search_area / self.params.min_image_sample_size)
+            self.target_scale = math.sqrt(search_area / self.params.min_image_sample_size)
 
         # Check if IoUNet is used
         self.use_iou_net = self.params.get('use_iou_net', True)
@@ -63,7 +63,8 @@ class ATOM(BaseTracker):
         # Use odd square search area and set sizes
         feat_max_stride = max(self.params.features.stride())
         if self.params.get('search_area_shape', 'square') == 'square':
-            self.img_sample_sz = torch.round(torch.sqrt(torch.prod(self.base_target_sz * self.params.search_area_scale))) * torch.ones(2)
+            self.img_sample_sz = torch.round(
+                torch.sqrt(torch.prod(self.base_target_sz * self.params.search_area_scale))) * torch.ones(2)
         elif self.params.search_area_shape == 'initrect':
             self.img_sample_sz = torch.round(self.base_target_sz * self.params.search_area_scale)
         else:
@@ -86,12 +87,15 @@ class ATOM(BaseTracker):
         if self.params.CG_forgetting_rate is None or max(self.params.precond_learning_rate) >= 1:
             self.params.direction_forget_factor = 0
         else:
-            self.params.direction_forget_factor = (1 - max(self.params.precond_learning_rate))**self.params.CG_forgetting_rate
+            self.params.direction_forget_factor = (1 - max(
+                self.params.precond_learning_rate)) ** self.params.CG_forgetting_rate
 
         self.output_window = None
         if self.params.get('window_output', False):
             if self.params.get('use_clipped_window', False):
-                self.output_window = dcf.hann2d_clipped(self.output_sz.long(), self.output_sz.long()*self.params.effective_search_area / self.params.search_area_scale, centered=False).to(self.params.device)
+                self.output_window = dcf.hann2d_clipped(self.output_sz.long(),
+                                                        self.output_sz.long() * self.params.effective_search_area / self.params.search_area_scale,
+                                                        centered=False).to(self.params.device)
             else:
                 self.output_window = dcf.hann2d(self.output_sz.long(), centered=False).to(self.params.device)
 
@@ -100,12 +104,17 @@ class ATOM(BaseTracker):
 
         # Convert image
         im = numpy_to_torch(image)
-        self.im = im    # For debugging only
+        self.im = im  # For debugging only
 
         # Setup scale bounds
         self.image_sz = torch.Tensor([im.shape[2], im.shape[3]])
         self.min_scale_factor = torch.max(10 / self.base_target_sz)
         self.max_scale_factor = torch.min(self.image_sz / self.base_target_sz)
+
+        # get target p
+        # im_patch, patch_coord = sample_patch(im, self.pos, self.target_scale * self.img_sample_sz, self.img_sample_sz)
+        #
+        # get_target_probability(im_patch, self.base_target_sz)
 
         # Extract and transform sample
         x = self.generate_init_samples(im)
@@ -134,7 +143,6 @@ class ATOM(BaseTracker):
         out = {'time': time.time() - tic}
         return out
 
-
     def init_optimization(self, train_x, init_y):
         # Initialize filter
         filter_init_method = self.params.get('filter_init_method', 'zeros')
@@ -144,18 +152,20 @@ class ATOM(BaseTracker):
             pass
         elif filter_init_method == 'randn':
             for f in self.filter:
-                f.normal_(0, 1/f.numel())
+                f.normal_(0, 1 / f.numel())
         else:
             raise ValueError('Unknown "filter_init_method"')
 
         # Get parameters
-        self.params.update_projection_matrix = self.params.get('update_projection_matrix', True) and self.params.use_projection_matrix
+        self.params.update_projection_matrix = self.params.get('update_projection_matrix',
+                                                               True) and self.params.use_projection_matrix
         optimizer = self.params.get('optimizer', 'GaussNewtonCG')
 
         # Setup factorized joint optimization
         if self.params.update_projection_matrix:
             self.joint_problem = FactorizedConvProblem(self.init_training_samples, init_y, self.filter_reg,
-                                                       self.fparams.attribute('projection_reg'), self.params, self.init_sample_weights,
+                                                       self.fparams.attribute('projection_reg'), self.params,
+                                                       self.init_sample_weights,
                                                        self.projection_activation, self.response_activation)
 
             # Variable containing both filter and projection matrix
@@ -168,7 +178,11 @@ class ATOM(BaseTracker):
                                                      plotting=(self.params.debug >= 3), analyze=analyze_convergence,
                                                      visdom=self.visdom)
             elif optimizer == 'GradientDescentL2':
-                self.joint_optimizer = GradientDescentL2(self.joint_problem, joint_var, self.params.optimizer_step_length, self.params.optimizer_momentum, plotting=(self.params.debug >= 3), debug=(self.params.debug >= 1),
+                self.joint_optimizer = GradientDescentL2(self.joint_problem, joint_var,
+                                                         self.params.optimizer_step_length,
+                                                         self.params.optimizer_momentum,
+                                                         plotting=(self.params.debug >= 3),
+                                                         debug=(self.params.debug >= 1),
                                                          visdom=self.visdom)
 
             # Do joint optimization
@@ -179,7 +193,8 @@ class ATOM(BaseTracker):
 
             if analyze_convergence:
                 opt_name = 'CG' if self.params.get('CG_optimizer', True) else 'GD'
-                for val_name, values in zip(['loss', 'gradient'], [self.joint_optimizer.losses, self.joint_optimizer.gradient_mags]):
+                for val_name, values in zip(['loss', 'gradient'],
+                                            [self.joint_optimizer.losses, self.joint_optimizer.gradient_mags]):
                     val_str = ' '.join(['{:.8e}'.format(v.item()) for v in values])
                     file_name = '{}_{}.txt'.format(opt_name, val_name)
                     with open(file_name, 'a') as f:
@@ -189,21 +204,24 @@ class ATOM(BaseTracker):
         # Re-project samples with the new projection matrix
         compressed_samples = self.project_sample(self.init_training_samples, self.projection_matrix)
         for train_samp, init_samp in zip(self.training_samples, compressed_samples):
-            train_samp[:init_samp.shape[0],...] = init_samp
+            train_samp[:init_samp.shape[0], ...] = init_samp
 
         self.hinge_mask = None
 
         # Initialize optimizer
-        self.conv_problem = ConvProblem(self.training_samples, self.y, self.filter_reg, self.sample_weights, self.response_activation)
+        self.conv_problem = ConvProblem(self.training_samples, self.y, self.filter_reg, self.sample_weights,
+                                        self.response_activation)
 
         if optimizer == 'GaussNewtonCG':
-            self.filter_optimizer = ConjugateGradient(self.conv_problem, self.filter, fletcher_reeves=self.params.fletcher_reeves,
-                                                      direction_forget_factor=self.params.direction_forget_factor, debug=(self.params.debug>=1),
-                                                      plotting=(self.params.debug>=3), visdom=self.visdom)
+            self.filter_optimizer = ConjugateGradient(self.conv_problem, self.filter,
+                                                      fletcher_reeves=self.params.fletcher_reeves,
+                                                      direction_forget_factor=self.params.direction_forget_factor,
+                                                      debug=(self.params.debug >= 1),
+                                                      plotting=(self.params.debug >= 3), visdom=self.visdom)
         elif optimizer == 'GradientDescentL2':
             self.filter_optimizer = GradientDescentL2(self.conv_problem, self.filter, self.params.optimizer_step_length,
                                                       self.params.optimizer_momentum, debug=(self.params.debug >= 1),
-                                                      plotting=(self.params.debug>=3), visdom=self.visdom)
+                                                      plotting=(self.params.debug >= 3), visdom=self.visdom)
 
         # Transfer losses from previous optimization
         if self.params.update_projection_matrix:
@@ -221,7 +239,6 @@ class ATOM(BaseTracker):
         if self.params.use_projection_matrix:
             del self.joint_problem, self.joint_optimizer
 
-
     def track(self, image, info: dict = None) -> dict:
         self.debug_info = {}
 
@@ -230,7 +247,7 @@ class ATOM(BaseTracker):
 
         # Convert image
         im = numpy_to_torch(image)
-        self.im = im    # For debugging only
+        self.im = im  # For debugging only
 
         # ------- LOCALIZATION ------- #
 
@@ -273,7 +290,7 @@ class ATOM(BaseTracker):
 
         if update_flag:
             # Get train sample
-            train_x = TensorList([x[scale_ind:scale_ind+1, ...] for x in test_x])
+            train_x = TensorList([x[scale_ind:scale_ind + 1, ...] for x in test_x])
 
             # Create label for sample
             train_y = self.get_label_function(sample_pos, sample_scales[scale_ind])
@@ -284,7 +301,7 @@ class ATOM(BaseTracker):
         # Train filter
         if hard_negative:
             self.filter_optimizer.run(self.params.hard_negative_CG_iter)
-        elif (self.frame_num-1) % self.params.train_skipping == 0:
+        elif (self.frame_num - 1) % self.params.train_skipping == 0:
             self.filter_optimizer.run(self.params.CG_iter)
 
         # Set the pos of the tracker to iounet pos
@@ -292,11 +309,10 @@ class ATOM(BaseTracker):
             self.pos = self.pos_iounet.clone()
 
         # Return new state
-        new_state = torch.cat((self.pos[[1,0]] - (self.target_sz[[1,0]]-1)/2, self.target_sz[[1,0]]))
+        new_state = torch.cat((self.pos[[1, 0]] - (self.target_sz[[1, 0]] - 1) / 2, self.target_sz[[1, 0]]))
 
         out = {'target_bbox': new_state.tolist()}
         return out
-
 
     def apply_filter(self, sample_x: TensorList):
         return operation.conv2d(sample_x, self.filter, mode='same')
@@ -307,7 +323,8 @@ class ATOM(BaseTracker):
         scores_raw = weight * scores_raw
         sf_weighted = fourier.cfft2(scores_raw) / (scores_raw.size(2) * scores_raw.size(3))
         for i, (sz, ksz) in enumerate(zip(self.feature_sz, self.kernel_size)):
-            sf_weighted[i] = fourier.shift_fs(sf_weighted[i], math.pi * (1 - torch.Tensor([ksz[0]%2, ksz[1]%2]) / sz))
+            sf_weighted[i] = fourier.shift_fs(sf_weighted[i],
+                                              math.pi * (1 - torch.Tensor([ksz[0] % 2, ksz[1] % 2]) / sz))
 
         scores_fs = fourier.sum_fs(sf_weighted)
         scores = fourier.sample_fs(scores_fs, self.output_sz)
@@ -333,8 +350,8 @@ class ATOM(BaseTracker):
         # Shift the score output for visualization purposes
         if self.params.debug >= 2:
             sz = scores.shape[-2:]
-            scores = torch.cat([scores[...,sz[0]//2:,:], scores[...,:sz[0]//2,:]], -2)
-            scores = torch.cat([scores[...,:,sz[1]//2:], scores[...,:,:sz[1]//2]], -1)
+            scores = torch.cat([scores[..., sz[0] // 2:, :], scores[..., :sz[0] // 2, :]], -2)
+            scores = torch.cat([scores[..., :, sz[1] // 2:], scores[..., :, :sz[1] // 2]], -1)
 
         return translation_vec, scale_ind, scores, None
 
@@ -346,20 +363,22 @@ class ATOM(BaseTracker):
         if self.output_window is not None and self.params.get('perform_hn_without_windowing', False):
             scores_orig = scores.clone()
 
-            scores_orig = torch.cat([scores_orig[..., (sz[0] + 1) // 2:, :], scores_orig[..., :(sz[0] + 1) // 2, :]], -2)
-            scores_orig = torch.cat([scores_orig[..., :, (sz[1] + 1) // 2:], scores_orig[..., :, :(sz[1] + 1) // 2]], -1)
+            scores_orig = torch.cat([scores_orig[..., (sz[0] + 1) // 2:, :], scores_orig[..., :(sz[0] + 1) // 2, :]],
+                                    -2)
+            scores_orig = torch.cat([scores_orig[..., :, (sz[1] + 1) // 2:], scores_orig[..., :, :(sz[1] + 1) // 2]],
+                                    -1)
 
             scores *= self.output_window
 
         # Shift scores back
-        scores = torch.cat([scores[...,(sz[0]+1)//2:,:], scores[...,:(sz[0]+1)//2,:]], -2)
-        scores = torch.cat([scores[...,:,(sz[1]+1)//2:], scores[...,:,:(sz[1]+1)//2]], -1)
+        scores = torch.cat([scores[..., (sz[0] + 1) // 2:, :], scores[..., :(sz[0] + 1) // 2, :]], -2)
+        scores = torch.cat([scores[..., :, (sz[1] + 1) // 2:], scores[..., :, :(sz[1] + 1) // 2]], -1)
 
         # Find maximum
         max_score1, max_disp1 = dcf.max2d(scores)
         _, scale_ind = torch.max(max_score1, dim=0)
         max_score1 = max_score1[scale_ind]
-        max_disp1 = max_disp1[scale_ind,...].float().cpu().view(-1)
+        max_disp1 = max_disp1[scale_ind, ...].float().cpu().view(-1)
         target_disp1 = max_disp1 - self.output_sz // 2
         translation_vec1 = target_disp1 * (self.img_support_sz / self.output_sz) * self.target_scale
 
@@ -375,8 +394,8 @@ class ATOM(BaseTracker):
         tneigh_bottom = min(round(max_disp1[0].item() + target_neigh_sz[0].item() / 2 + 1), sz[0])
         tneigh_left = max(round(max_disp1[1].item() - target_neigh_sz[1].item() / 2), 0)
         tneigh_right = min(round(max_disp1[1].item() + target_neigh_sz[1].item() / 2 + 1), sz[1])
-        scores_masked = scores[scale_ind:scale_ind+1,...].clone()
-        scores_masked[...,tneigh_top:tneigh_bottom,tneigh_left:tneigh_right] = 0
+        scores_masked = scores[scale_ind:scale_ind + 1, ...].clone()
+        scores_masked[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right] = 0
 
         # Find new maximum
         max_score2, max_disp2 = dcf.max2d(scores_masked)
@@ -386,8 +405,8 @@ class ATOM(BaseTracker):
 
         # Handle the different cases
         if max_score2 > self.params.distractor_threshold * max_score1:
-            disp_norm1 = torch.sqrt(torch.sum(target_disp1**2))
-            disp_norm2 = torch.sqrt(torch.sum(target_disp2**2))
+            disp_norm1 = torch.sqrt(torch.sum(target_disp1 ** 2))
+            disp_norm2 = torch.sqrt(torch.sum(target_disp2 ** 2))
             disp_threshold = self.params.dispalcement_scale * math.sqrt(sz[0] * sz[1]) / 2
 
             if disp_norm2 > disp_threshold and disp_norm1 < disp_threshold:
@@ -405,7 +424,6 @@ class ATOM(BaseTracker):
 
         return translation_vec1, scale_ind, scores, None
 
-
     def extract_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor):
         return self.params.features.extract(im, pos, scales, sz)[0]
 
@@ -415,7 +433,8 @@ class ATOM(BaseTracker):
     def get_iou_backbone_features(self):
         return self.params.features.get_unique_attribute('iounet_backbone_features')
 
-    def extract_processed_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> (TensorList, TensorList):
+    def extract_processed_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> (
+            TensorList, TensorList):
         x = self.extract_sample(im, pos, scales, sz)
         return self.preprocess_sample(self.project_sample(x))
 
@@ -424,7 +443,7 @@ class ATOM(BaseTracker):
             x = x * self.feature_window
         return x
 
-    def project_sample(self, x: TensorList, proj_matrix = None):
+    def project_sample(self, x: TensorList, proj_matrix=None):
         # Apply projection matrix
         if proj_matrix is None:
             proj_matrix = self.projection_matrix
@@ -469,7 +488,6 @@ class ATOM(BaseTracker):
         else:
             raise ValueError('Unknown activation')
 
-
     def generate_init_samples(self, im: torch.Tensor) -> TensorList:
         """Generate augmented initial samples."""
 
@@ -492,21 +510,28 @@ class ATOM(BaseTracker):
         # Create transformations
         self.transforms = [augmentation.Identity(aug_output_sz)]
         if 'shift' in self.params.augmentation:
-            self.transforms.extend([augmentation.Translation(shift, aug_output_sz) for shift in self.params.augmentation['shift']])
+            self.transforms.extend(
+                [augmentation.Translation(shift, aug_output_sz) for shift in self.params.augmentation['shift']])
         if 'relativeshift' in self.params.augmentation:
-            get_absolute = lambda shift: (torch.Tensor(shift) * self.img_sample_sz/2).long().tolist()
-            self.transforms.extend([augmentation.Translation(get_absolute(shift), aug_output_sz) for shift in self.params.augmentation['relativeshift']])
+            get_absolute = lambda shift: (torch.Tensor(shift) * self.img_sample_sz / 2).long().tolist()
+            self.transforms.extend([augmentation.Translation(get_absolute(shift), aug_output_sz) for shift in
+                                    self.params.augmentation['relativeshift']])
         if 'fliplr' in self.params.augmentation and self.params.augmentation['fliplr']:
             self.transforms.append(augmentation.FlipHorizontal(aug_output_sz, get_rand_shift()))
         if 'blur' in self.params.augmentation:
-            self.transforms.extend([augmentation.Blur(sigma, aug_output_sz, get_rand_shift()) for sigma in self.params.augmentation['blur']])
+            self.transforms.extend([augmentation.Blur(sigma, aug_output_sz, get_rand_shift()) for sigma in
+                                    self.params.augmentation['blur']])
         if 'scale' in self.params.augmentation:
-            self.transforms.extend([augmentation.Scale(scale_factor, aug_output_sz, get_rand_shift()) for scale_factor in self.params.augmentation['scale']])
+            self.transforms.extend(
+                [augmentation.Scale(scale_factor, aug_output_sz, get_rand_shift()) for scale_factor in
+                 self.params.augmentation['scale']])
         if 'rotate' in self.params.augmentation:
-            self.transforms.extend([augmentation.Rotate(angle, aug_output_sz, get_rand_shift()) for angle in self.params.augmentation['rotate']])
+            self.transforms.extend([augmentation.Rotate(angle, aug_output_sz, get_rand_shift()) for angle in
+                                    self.params.augmentation['rotate']])
 
         # Generate initial samples
-        init_samples = self.params.features.extract_transformed(im, self.pos, self.target_scale, aug_expansion_sz, self.transforms)
+        init_samples = self.params.features.extract_transformed(im, self.pos, self.target_scale, aug_expansion_sz,
+                                                                self.transforms)
 
         # Remove augmented samples for those that shall not have
         for i, use_aug in enumerate(self.fparams.attribute('use_augmentation')):
@@ -516,13 +541,14 @@ class ATOM(BaseTracker):
         # Add dropout samples
         if 'dropout' in self.params.augmentation:
             num, prob = self.params.augmentation['dropout']
-            self.transforms.extend(self.transforms[:1]*num)
+            self.transforms.extend(self.transforms[:1] * num)
             for i, use_aug in enumerate(self.fparams.attribute('use_augmentation')):
                 if use_aug:
-                    init_samples[i] = torch.cat([init_samples[i], F.dropout2d(init_samples[i][0:1,...].expand(num,-1,-1,-1), p=prob, training=True)])
+                    init_samples[i] = torch.cat([init_samples[i],
+                                                 F.dropout2d(init_samples[i][0:1, ...].expand(num, -1, -1, -1), p=prob,
+                                                             training=True)])
 
         return init_samples
-
 
     def init_projection_matrix(self, x):
         # Set if using projection matrix
@@ -537,15 +563,18 @@ class ATOM(BaseTracker):
                 x_mat -= x_mat.mean(dim=1, keepdim=True)
                 cov_x = x_mat @ x_mat.t()
                 self.projection_matrix = TensorList(
-                    [None if cdim is None else torch.svd(C)[0][:, :cdim].t().unsqueeze(-1).unsqueeze(-1).clone() for C, cdim in
+                    [None if cdim is None else torch.svd(C)[0][:, :cdim].t().unsqueeze(-1).unsqueeze(-1).clone() for
+                     C, cdim in
                      zip(cov_x, self.compressed_dim)])
             elif proj_init_method == 'randn':
                 self.projection_matrix = TensorList(
-                    [None if cdim is None else ex.new_zeros(cdim,ex.shape[1],1,1).normal_(0,1/math.sqrt(ex.shape[1])) for ex, cdim in
+                    [None if cdim is None else ex.new_zeros(cdim, ex.shape[1], 1, 1).normal_(0,
+                                                                                             1 / math.sqrt(ex.shape[1]))
+                     for ex, cdim in
                      zip(x, self.compressed_dim)])
         else:
             self.compressed_dim = x.size(1)
-            self.projection_matrix = TensorList([None]*len(x))
+            self.projection_matrix = TensorList([None] * len(x))
 
     def init_label_function(self, train_x):
         # Allocate label function
@@ -553,7 +582,9 @@ class ATOM(BaseTracker):
 
         # Output sigma factor
         output_sigma_factor = self.fparams.attribute('output_sigma_factor')
-        self.sigma = (self.feature_sz / self.img_support_sz * self.base_target_sz).prod().sqrt() * output_sigma_factor * torch.ones(2)
+        self.sigma = (
+                             self.feature_sz / self.img_support_sz * self.base_target_sz).prod().sqrt() * output_sigma_factor * torch.ones(
+            2)
 
         # Center pos in normalized coords
         target_center_norm = (self.pos - self.pos.round()) / (self.target_scale * self.img_support_sz)
@@ -567,7 +598,6 @@ class ATOM(BaseTracker):
 
         # Return only the ones to use for initial training
         return TensorList([y[:x.shape[0], ...] for y, x in zip(self.y, train_x)])
-
 
     def init_memory(self, train_x):
         # Initialize first-frame training samples
@@ -587,23 +617,26 @@ class ATOM(BaseTracker):
             [x.new_zeros(self.params.sample_memory_size, cdim, x.shape[2], x.shape[3]) for x, cdim in
              zip(train_x, self.compressed_dim)])
 
-    def update_memory(self, sample_x: TensorList, sample_y: TensorList, learning_rate = None):
-        replace_ind = self.update_sample_weights(self.sample_weights, self.previous_replace_ind, self.num_stored_samples, self.num_init_samples, self.fparams, learning_rate)
+    def update_memory(self, sample_x: TensorList, sample_y: TensorList, learning_rate=None):
+        replace_ind = self.update_sample_weights(self.sample_weights, self.previous_replace_ind,
+                                                 self.num_stored_samples, self.num_init_samples, self.fparams,
+                                                 learning_rate)
         self.previous_replace_ind = replace_ind
         for train_samp, x, ind in zip(self.training_samples, sample_x, replace_ind):
-            train_samp[ind:ind+1,...] = x
+            train_samp[ind:ind + 1, ...] = x
         for y_memory, y, ind in zip(self.y, sample_y, replace_ind):
-            y_memory[ind:ind+1,...] = y
+            y_memory[ind:ind + 1, ...] = y
         if self.hinge_mask is not None:
             for m, y, ind in zip(self.hinge_mask, sample_y, replace_ind):
-                m[ind:ind+1,...] = (y >= self.params.hinge_threshold).float()
+                m[ind:ind + 1, ...] = (y >= self.params.hinge_threshold).float()
         self.num_stored_samples += 1
 
-
-    def update_sample_weights(self, sample_weights, previous_replace_ind, num_stored_samples, num_init_samples, fparams, learning_rate = None):
+    def update_sample_weights(self, sample_weights, previous_replace_ind, num_stored_samples, num_init_samples, fparams,
+                              learning_rate=None):
         # Update weights and get index to replace in memory
         replace_ind = []
-        for sw, prev_ind, num_samp, num_init, fpar in zip(sample_weights, previous_replace_ind, num_stored_samples, num_init_samples, fparams):
+        for sw, prev_ind, num_samp, num_init, fpar in zip(sample_weights, previous_replace_ind, num_stored_samples,
+                                                          num_init_samples, fparams):
             lr = learning_rate
             if lr is None:
                 lr = fpar.learning_rate
@@ -647,7 +680,7 @@ class ATOM(BaseTracker):
             train_y.append(dcf.label_function_spatial(sz, sig, center))
         return train_y
 
-    def update_state(self, new_pos, new_scale = None):
+    def update_state(self, new_pos, new_scale=None):
         # Update scale
         if new_scale is not None:
             self.target_scale = new_scale.clamp(self.min_scale_factor, self.max_scale_factor)
@@ -676,56 +709,74 @@ class ATOM(BaseTracker):
         target_boxes = TensorList()
         if self.params.iounet_augmentation:
             for T in self.transforms:
-                if not isinstance(T, (augmentation.Identity, augmentation.Translation, augmentation.FlipHorizontal, augmentation.FlipVertical, augmentation.Blur)):
+                if not isinstance(T, (
+                        augmentation.Identity, augmentation.Translation, augmentation.FlipHorizontal,
+                        augmentation.FlipVertical,
+                        augmentation.Blur)):
                     break
                 target_boxes.append(self.iou_target_box + torch.Tensor([T.shift[1], T.shift[0], 0, 0]))
         else:
             target_boxes.append(self.iou_target_box.clone())
-        target_boxes = torch.cat(target_boxes.view(1,4), 0).to(self.params.device)
+        target_boxes = torch.cat(target_boxes.view(1, 4), 0).to(self.params.device)
 
         # Get iou features
         iou_backbone_features = self.get_iou_backbone_features()
 
         # Remove other augmentations such as rotation
-        iou_backbone_features = TensorList([x[:target_boxes.shape[0],...] for x in iou_backbone_features])
+        iou_backbone_features = TensorList([x[:target_boxes.shape[0], ...] for x in iou_backbone_features])
 
         # Extract target feat
         with torch.no_grad():
             target_feat = self.iou_predictor.get_modulation(iou_backbone_features, target_boxes)
-        self.target_feat = TensorList([x.detach().mean(0) for x in target_feat])
+
+        # ###my modify
+        if len(target_feat) == 3:
+            target_feat = [x.detach() for x in target_feat]
+            self.target_feat = target_feat
+        else:
+            if len(target_feat) == 1:
+                target_feat = TensorList([x.detach() for x in target_feat])
+                self.target_feat = target_feat[0]
+            else:
+                self.target_feat = TensorList([x.detach().mean(0) for x in target_feat])  ##origin
 
         if self.params.get('iounet_not_use_reference', False):
             self.target_feat = TensorList([torch.full_like(tf, tf.norm() / tf.numel()) for tf in self.target_feat])
 
-
-    def refine_target_box(self, sample_pos, sample_scale, scale_ind, update_scale = True):
+    def refine_target_box(self, sample_pos, sample_scale, scale_ind, update_scale=True):
         # Initial box for refinement
         init_box = self.get_iounet_box(self.pos, self.target_sz, sample_pos, sample_scale)
 
         # Extract features from the relevant scale
         iou_features = self.get_iou_features()
-        iou_features = TensorList([x[scale_ind:scale_ind+1,...] for x in iou_features])
 
-        init_boxes = init_box.view(1,4).clone()
+        if len(iou_features) == 1:
+            iou_features = iou_features[0].unsqueeze(0)
+        else:
+            iou_features = TensorList([x[scale_ind:scale_ind + 1, ...] for x in iou_features])
+
+        init_boxes = init_box.view(1, 4).clone()
         if self.params.num_init_random_boxes > 0:
             # Get random initial boxes
             square_box_sz = init_box[2:].prod().sqrt()
-            rand_factor = square_box_sz * torch.cat([self.params.box_jitter_pos * torch.ones(2), self.params.box_jitter_sz * torch.ones(2)])
-            minimal_edge_size = init_box[2:].min()/3
+            rand_factor = square_box_sz * torch.cat(
+                [self.params.box_jitter_pos * torch.ones(2), self.params.box_jitter_sz * torch.ones(2)])
+            minimal_edge_size = init_box[2:].min() / 3
             rand_bb = (torch.rand(self.params.num_init_random_boxes, 4) - 0.5) * rand_factor
-            new_sz = (init_box[2:] + rand_bb[:,2:]).clamp(minimal_edge_size)
-            new_center = (init_box[:2] + init_box[2:]/2) + rand_bb[:,:2]
-            init_boxes = torch.cat([new_center - new_sz/2, new_sz], 1)
-            init_boxes = torch.cat([init_box.view(1,4), init_boxes])
+            new_sz = (init_box[2:] + rand_bb[:, 2:]).clamp(minimal_edge_size)
+            new_center = (init_box[:2] + init_box[2:] / 2) + rand_bb[:, :2]
+            init_boxes = torch.cat([new_center - new_sz / 2, new_sz], 1)
+            init_boxes = torch.cat([init_box.view(1, 4), init_boxes])
 
         # Refine boxes by maximizing iou
         output_boxes, output_iou = self.optimize_boxes(iou_features, init_boxes)
 
         # Remove weird boxes with extreme aspect ratios
         output_boxes[:, 2:].clamp_(1)
-        aspect_ratio = output_boxes[:,2] / output_boxes[:,3]
-        keep_ind = (aspect_ratio < self.params.maximal_aspect_ratio) * (aspect_ratio > 1/self.params.maximal_aspect_ratio)
-        output_boxes = output_boxes[keep_ind,:]
+        aspect_ratio = output_boxes[:, 2] / output_boxes[:, 3]
+        keep_ind = (aspect_ratio < self.params.maximal_aspect_ratio) * (
+                aspect_ratio > 1 / self.params.maximal_aspect_ratio)
+        output_boxes = output_boxes[keep_ind, :]
         output_iou = output_iou[keep_ind]
 
         # If no box found
@@ -740,7 +791,7 @@ class ATOM(BaseTracker):
         predicted_iou = output_iou.view(-1, 1)[inds, :].mean(0)
 
         # Update position
-        new_pos = predicted_box[:2] + predicted_box[2:]/2 - (self.iou_img_sample_sz - 1) / 2
+        new_pos = predicted_box[:2] + predicted_box[2:] / 2 - (self.iou_img_sample_sz - 1) / 2
         new_pos = new_pos.flip((0,)) * sample_scale + sample_pos
         new_target_sz = predicted_box[2:].flip((0,)) * sample_scale
         new_scale = torch.sqrt(new_target_sz.prod() / self.base_target_sz.prod())
@@ -791,7 +842,7 @@ class ATOM(BaseTracker):
 
                 # Update proposal
                 step = update_mask_float * step_length * bb_init.grad * bb_init[:, :, 2:].repeat(1, 1, 2) - (
-                            1.0 - update_mask_float) * step
+                        1.0 - update_mask_float) * step
                 output_boxes = bb_init + step
                 output_boxes.detach_()
 

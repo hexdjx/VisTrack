@@ -208,12 +208,18 @@ class ATOMResNet18(MultiFeatureBase):
         with torch.no_grad():
             output_features = self.net.extract_features(im, self.feature_layers)
 
-        # Store the raw resnet features which are input to iounet
-        self.iounet_backbone_features = TensorList(
-            [output_features[layer].clone() for layer in self.iounet_feature_layers])
+        if len(output_features) == 3:
+            self.iounet_backbone_features = output_features
+        else:
+            # Store the raw resnet features which are input to iounet
+            self.iounet_backbone_features = TensorList(
+                [output_features[layer].clone() for layer in self.iounet_feature_layers])
 
         # Store the processed features from iounet, just before pooling
         with torch.no_grad():
             self.iounet_features = TensorList(self.iou_predictor.get_iou_feat(self.iounet_backbone_features))
 
-        return TensorList([output_features[layer] for layer in self.output_layers])
+        if len(output_features) == 3:
+            return TensorList([output_features[0]])
+        else:
+            return TensorList([output_features[layer] for layer in self.output_layers])

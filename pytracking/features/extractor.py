@@ -164,7 +164,7 @@ class MultiResolutionExtractor(ExtractorBase):
             return feature_map, im_patch
         else:
             return feature_map
-#####################################################################################
+    #####################################################################################
 
     def extract_transformed(self, im, pos, scale, image_sz, transforms):
         """Extract features from a set of transformed image samples.
@@ -176,17 +176,8 @@ class MultiResolutionExtractor(ExtractorBase):
             transforms: A set of image transforms to apply.
         """
 
-        # Get image patche
+        # Get image patches
         im_patch, _ = sample_patch(im, pos, scale * image_sz, image_sz)
-
-        # import matplotlib.pyplot as plt
-        # import numpy as np
-        # a = im_patch.squeeze(0).permute(1, 2, 0).numpy()
-        # b = np.min(a)
-        # a = (a-np.min(a))/(np.max(a)-np.min(a))
-        # plt.figure(2)
-        # plt.imshow(a)
-        # plt.show()
 
         # Apply transforms
         im_patches = torch.cat([T(im_patch) for T in transforms])

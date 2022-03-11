@@ -74,3 +74,10 @@ class NetWithBackbone(NetWrapper):
         Expects a float tensor image with pixel range [0, 255]."""
         im = self.preprocess_image(im)
         return self.net.extract_backbone_features(im)
+
+    # --SiameseTracker-- ##########################################
+    def template(self, x):
+        self.net.template(x)
+
+    def track(self, z):
+        return self.net.track(z)

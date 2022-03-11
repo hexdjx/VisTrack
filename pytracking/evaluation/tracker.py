@@ -177,8 +177,8 @@ class Tracker:
         image = self._read_image(seq.frames[0])
 
         if tracker.params.visualization and self.visdom is None:
-            # self.visualize(1, image, init_info.get('init_bbox'))
-            self.visualize(1, seq.ground_truth_rect[0], image, init_info.get('init_bbox'))
+            # self.visualize(image, init_info.get('init_bbox'))
+            self.visualize(seq.ground_truth_rect[0], image, init_info.get('init_bbox'))  # my modify
 
         start_time = time.time()
         out = tracker.initialize(image, init_info)
@@ -219,8 +219,9 @@ class Tracker:
             if self.visdom is not None:
                 tracker.visdom_draw_tracking(image, out['target_bbox'], segmentation)
             elif tracker.params.visualization:
-                self.visualize(frame_num, seq.ground_truth_rect[frame_num], image, out['target_bbox'],
-                               segmentation)
+                # my modify
+                self.visualize(seq.ground_truth_rect[frame_num], image, out['target_bbox'], segmentation)
+                # self.visualize(image, out['target_bbox'], segmentation)
 
         for key in ['target_bbox', 'segmentation']:
             if key in output and len(output[key]) <= 1:
@@ -660,7 +661,7 @@ class Tracker:
         self.fig.canvas.mpl_connect('key_press_event', self.press)
         plt.tight_layout()
 
-    def visualize(self, frame_num, gt_state, image, state, segmentation=None):
+    def visualize(self, gt_state, image, state, segmentation=None):
         self.gt_state = gt_state
         self.ax.cla()
         self.ax.imshow(image)

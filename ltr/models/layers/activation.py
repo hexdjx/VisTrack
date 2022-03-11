@@ -28,11 +28,11 @@ class MLU(nn.Module):
     def forward(self, input):
         return F.elu(F.leaky_relu(input, 1 / self.min_val, inplace=self.inplace), self.min_val, inplace=self.inplace)
 
-
+# nn.LeakyReLU
 class LeakyReluPar(nn.Module):
     r"""LeakyRelu parametric activation
     """
-
+    # x>0 --> x, x<0 --> a*x
     def forward(self, x, a):
         return (1.0 - a) / 2.0 * torch.abs(x) + (1.0 + a) / 2.0 * x
 

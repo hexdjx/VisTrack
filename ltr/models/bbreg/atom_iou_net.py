@@ -39,7 +39,7 @@ class AtomIoUNet(nn.Module):
         self.conv4_2t = conv(256, pred_input_dim[1], kernel_size=3, stride=1)
 
         self.prroi_pool4r = PrRoIPool2D(1, 1, 1/16)
-        self.prroi_pool4t = PrRoIPool2D(3, 3, 1 / 16)
+        self.prroi_pool4t = PrRoIPool2D(3, 3, 1/16)
 
         self.fc34_3r = conv(256 + 256, pred_input_dim[0], kernel_size=1, stride=1, padding=0)
         self.fc34_4r = conv(256 + 256, pred_input_dim[1], kernel_size=1, stride=1, padding=0)

@@ -479,3 +479,47 @@ class DiMPSimpleActor(BaseActor):
                     stats['ClfTrain/test_iter_loss'] = sum(clf_losses_test[1:-1]).item() / (len(clf_losses_test) - 2)
 
         return loss, stats
+
+
+class TargetCandiateMatchingActor(BaseActor):
+    """Actor for training the KeepTrack network."""
+    def __init__(self, net, objective):
+        super().__init__(net, objective)
+
+    def __call__(self, data):
+        """
+        args:
+            data - The input data.
+
+        returns:
+            loss    - the training loss
+            stats  -  dict containing detailed losses
+        """
+
+        preds = self.net(**data)
+
+        # Classification losses for the different optimization iterations
+        losses = self.objective['target_candidate_matching'](**data, **preds)
+
+
+        # Total loss
+        loss = losses['total'].mean()
+
+        # Log stats
+        stats = {
+            'Loss/total': loss.item(),
+            'Loss/nll_pos': losses['nll_pos'].mean().item(),
+            'Loss/nll_neg': losses['nll_neg'].mean().item(),
+            'Loss/num_matchable': losses['num_matchable'].mean().item(),
+            'Loss/num_unmatchable': losses['num_unmatchable'].mean().item(),
+            'Loss/sinkhorn_norm': losses['sinkhorn_norm'].mean().item(),
+            'Loss/bin_score': losses['bin_score'].item(),
+        }
+
+        if hasattr(self.objective['target_candidate_matching'], 'metrics'):
+            metrics = self.objective['target_candidate_matching'].metrics(**data, **preds)
+
+            for key, val in metrics.items():
+                stats[key] = torch.mean(val[~torch.isnan(val)]).item()
+
+        return loss, stats

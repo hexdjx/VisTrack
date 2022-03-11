@@ -8,10 +8,63 @@ from pytracking.analysis.plot_results import plot_results, print_results, print_
 from pytracking.evaluation import Tracker, get_dataset, trackerlist
 
 trackers = []
-#######################################################
+#################################################################################################
 # @author Xuedong He
 
-# --my add--#####################################################################
+# origin paper results
+# otb:100, uav:123, tpl:129, nfs:100, lasot:280
+# trackers.extend(trackerlist('CCOT', 'default', None, 'CCOT'))  # otb uav nfs tpl
+# trackers.extend(trackerlist('ECO', 'default_hc', None, 'ECO-HC'))  # otb uav tpl
+# trackers.extend(trackerlist('UPDT', 'default', range(0, 10), 'UPDT'))  # otb uav nfs tpl
+# trackers.extend(trackerlist('MDNet', 'default', None, 'MDNet'))  # otb lasot(all data 1400) nfs
+# trackers.extend(trackerlist('ECO', 'default_deep', None, 'ECO'))  # otb uav nfs tpl
+# trackers.extend(trackerlist('DaSiamRPN', 'default', None, 'DaSiamRPN'))  # otb uav
+# trackers.extend(trackerlist('SiamRPN++', 'default', None, 'SiamRPN++'))  # otb uav lasot
+
+# trackers.extend(trackerlist('KYS', 'default', range(0, 5), 'KYS'))  # otb nfs
+# trackers.extend(trackerlist('ATOM', 'default', range(0, 5), 'ATOM'))  # otb uav nfs lasot
+# trackers.extend(trackerlist('DiMP', 'dimp18', range(0, 5), 'DiMP18'))  # otb uav nfs lasot
+# trackers.extend(trackerlist('DiMP', 'dimp50', range(0, 5), 'DiMP50'))  # otb uav nfs lasot
+# trackers.extend(trackerlist('DiMP', 'prdimp18', range(0, 5), 'PrDiMP18'))  # otb uav nfs lasot
+# trackers.extend(trackerlist('DiMP', 'prdimp50', range(0, 5), 'PrDiMP50'))  # otb uav nfs lasot
+trackers.extend(trackerlist('DiMP', 'super_dimp', range(0, 5), 'SuperDiMP'))  # otb uav nfs lasot
+# trackers.extend(trackerlist('DiMP', 'super_dimp_simple', range(0, 5), 'SuperDiMPSimple'))  # otb uav nfs lasot lasotextensionsubset
+# trackers.extend(trackerlist('KeepTrack', 'default', range(0, 5), 'KeepTrack'))  # otb uav nfs lasot lasotextensionsubset
+#############################################################################################################
+
+# --RVT-- #####################################################################
+# Reliable Verifier
+
+# target embedding network
+# adaptive threshold
+# trackers.extend(trackerlist('rvt', 'rvt_0', range(0, 1), 'rvt_0'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_1', range(0, 1), 'rvt_1'))  # otb, nfs, uav # Optional
+# trackers.extend(trackerlist('rvt', 'rvt_2', range(0, 1), 'rvt_2'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_3', range(0, 1), 'rvt_3'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_4', range(0, 1), 'rvt_4'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_5', range(0, 1), 'rvt_5'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_6', range(0, 1), 'rvt_6'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_7', range(0, 1), 'rvt_7'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_8', range(0, 1), 'rvt_8'))  # otb, nfs, uav # Optional
+
+# gauss sampling
+# trackers.extend(trackerlist('rvt', 'rvt', range(0, 1), 'RVT'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'rvt_gauss', range(0, 1), 'RVT_gauss'))  # otb, nfs, uav
+
+#  Portability test
+# trackers.extend(trackerlist('DiMP', 'dimp50', range(0, 1), 'DiMP'))  # otb uav nfs
+# trackers.extend(trackerlist('DiMP', 'prdimp50', range(0, 1), 'PrDiMP'))  # otb uav nfs
+# trackers.extend(trackerlist('dimp', 'dimp50_no_al', range(0, 1), 'DiMP_noAL'))  # otb uav nfs
+# trackers.extend(trackerlist('dimp', 'prdimp50_no_al', range(0, 1), 'PrDiMP_noAL'))  # otb uav nfs
+# trackers.extend(trackerlist('rvt', 'dimp50_rv', range(0, 1), 'DiMP_RV'))  # otb, nfs, uav
+# trackers.extend(trackerlist('rvt', 'prdimp50_rv', range(0, 1), 'PrDiMP_RV'))  # otb, nfs, uav
+
+# trackers.extend(trackerlist('dimp', 'super_dimp', range(0, 1), 'SuperDimp'))  # otb, uav, nfs, lasot
+# trackers.extend(trackerlist('dimp', 'super_dimp_no_al', range(0, 1), 'SuperDimp_no_al'))  # otb, uav, nfs, lasot
+# trackers.extend(trackerlist('rvt', 'rvt', range(0, 1), 'RVT'))  # otb, nfs, uav lasot
+
+
+# --OUPT-- #####################################################################
 # Object Uncertainty Policy
 
 # OTB datasets results
@@ -41,7 +94,8 @@ trackers = []
 # OTB, UAV, NFS, and LaSOT results
 # trackers.extend(trackerlist('oupt', 'proupt50', range(0, 1), 'OUPT'))
 
-# --my add--#####################################################################
+
+# --VSLT-- #####################################################################
 # Variable Scale Learning
 
 # scale factor choice test 1~10 [1.005, 1.05,step=0.005]
@@ -86,10 +140,10 @@ trackers = []
 
 ###################################################################################################
 
-# --plot results--##############################################################################
-dataset = get_dataset('otb')
-plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'),
-             skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
+# --plot results-- ##############################################################################
+# dataset = get_dataset('otb')
+# plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'),
+#              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 #
 # dataset = get_dataset('nfs')
 # plot_results(trackers, dataset, 'NFS', merge_results=True, plot_types=('success', 'prec'),
@@ -99,8 +153,12 @@ plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success'
 # plot_results(trackers, dataset, 'UAV', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 
-# dataset = get_dataset('lasot')
-# plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec'),
+dataset = get_dataset('lasot')
+plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec'),
+             skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
+
+# dataset = get_dataset('lasot_extension_subset')
+# plot_results(trackers, dataset, 'LaSOTExtSub', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 
 # dataset = get_dataset('tpl')  # tpl tpl_nootb
@@ -109,7 +167,7 @@ plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success'
 
 ##################################################################################
 
-# --print tables--##############################################################################
+# --print tables-- ##############################################################################
 # dataset = get_dataset('otb')
 # print_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
 
@@ -126,7 +184,7 @@ plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success'
 # print_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
 ##################################################################################################
 
-# --Filtered per-sequence results--##############################################################
+# --Filtered per-sequence results-- ##############################################################
 # Print per sequence results for sequences where all trackers fail, i.e. all trackers have average overlap in percentage of less than 10.0
 # filter_criteria = {'mode': 'ao_max', 'threshold': 10.0}
 # dataset = get_dataset('otb', 'nfs', 'uav')

@@ -7,3 +7,4 @@ from .youtubevos import YouTubeVOS
 from .imagenetvid import ImagenetVID
 from .imagenetdet import ImagenetDET
 from .saliency import Saliency
+from .lasot_candidate_matching import LasotCandidateMatching

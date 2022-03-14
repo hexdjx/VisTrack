@@ -5,6 +5,100 @@ import matplotlib.pyplot as plt
 
 from pytracking.evaluation import get_dataset
 
+
+# enhancing DiMP
+def plot_endimp(base_path):
+    _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 255, 255), 3: (255, 0, 0),
+                            4: (0, 0, 255)}
+
+    SuperDiMP = base_path + 'dimp/super_dimp_000'
+    EnDiMP = base_path + 'endimp/endimp_000'
+    EnDiMP_v = base_path + 'endimp/endimp_verifier_000'
+
+    dataset = get_dataset('otb')
+
+    sequence = ['Skating2_1', 'DragonBaby', 'Diving']
+    dataset = [dataset[s] for s in sequence]
+
+    for seq in dataset:
+        gt = seq.ground_truth_rect
+        SuperDiMP_file = '{}/{}.txt'.format(SuperDiMP, seq.name)
+        EnDiMP_file = '{}/{}.txt'.format(EnDiMP, seq.name)
+        EnDiMP_v_file = '{}/{}.txt'.format(EnDiMP_v, seq.name)
+
+        SuperDiMP_bb = np.loadtxt(SuperDiMP_file)
+        EnDiMP_bb = np.loadtxt(EnDiMP_file)
+        EnDiMP_v_bb = np.loadtxt(EnDiMP_v_file)
+
+        output_path = './results/endimp/img/{}/'.format(seq.name)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        for frame_num, frame_path in enumerate(seq.frames):
+            im = cv.imread(seq.frames[frame_num])
+            # im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+            # plt.imshow(im)
+
+            pred_bb = [gt[frame_num], SuperDiMP_bb[frame_num], EnDiMP_bb[frame_num], EnDiMP_v_bb[frame_num]]
+            # pred_bb =[gt[frame_num], SuperDiMP[frame_num], EnDiMP[frame_num]]
+            for i, s in enumerate(pred_bb, start=1):
+                pred_s = s
+                tl = tuple(map(int, [pred_s[0], pred_s[1]]))
+                br = tuple(map(int, [pred_s[0] + pred_s[2], pred_s[1] + pred_s[3]]))
+                col = _tracker_disp_colors[i]
+                cv.rectangle(im, tl, br, col, 2)
+                # plt.imshow(im)
+                # plt.show()
+
+            cv.imwrite('{}/{}.jpg'.format(output_path, frame_num+1), im)
+
+
+# reliable verifier
+def plot_rvt(base_path):
+    _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 255, 255), 3: (255, 0, 0), 4: (0, 0, 255)}
+
+    Baseline = base_path + 'dimp/super_dimp_000'
+    SuperDiMP = base_path + 'dimp/super_dimp_no_al_000'
+    Ours = base_path + 'rvt/rvt_000'
+
+    dataset = get_dataset('otb')
+
+    sequence = ['Basketball', 'Bird2', 'Liquor', 'Soccer']
+    dataset = [dataset[s] for s in sequence]
+
+    for seq in dataset:
+        Baseline_file = '{}/{}.txt'.format(Baseline, seq.name)
+        SuperDiMP_file = '{}/{}.txt'.format(SuperDiMP, seq.name)
+        Ours_file = '{}/{}.txt'.format(Ours, seq.name)
+
+        gt = seq.ground_truth_rect
+        Baseline_bb = np.loadtxt(Baseline_file)
+        SuperDiMP_bb = np.loadtxt(SuperDiMP_file)
+        Ours_bb = np.loadtxt(Ours_file)
+
+        output_path = './results/rvt/img/{}/'.format(seq.name)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        for frame_num, frame_path in enumerate(seq.frames):
+            im = cv.imread(seq.frames[frame_num])
+            # im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
+            # plt.imshow(im)
+
+            pred_bb = [gt[frame_num], Baseline_bb[frame_num], SuperDiMP_bb[frame_num], Ours_bb[frame_num]]
+
+            for i, s in enumerate(pred_bb, start=1):
+                pred_s = s
+                tl = tuple(map(int, [pred_s[0], pred_s[1]]))
+                br = tuple(map(int, [pred_s[0] + pred_s[2], pred_s[1] + pred_s[3]]))
+                col = _tracker_disp_colors[i]
+                cv.rectangle(im, tl, br, col, 2)
+                # plt.imshow(im)
+                # plt.show()
+
+            cv.imwrite('{}/{}.jpg'.format(output_path, frame_num + 1), im)
+
+
 # object-uncertainty polcy
 def plot_oupt(base_path):
     _tracker_disp_colors = {1: (0, 255, 0), 2: (255, 0, 0), 3: (0, 0, 255),
@@ -130,4 +224,6 @@ if __name__ == "__main__":
     base_path = "D:/Tracking/VisTrack/pytracking/results/tracking_results/"
     # plot_vslt(base_path)
     # plot_oupt(base_path)
+    # plot_rvt(base_path)
+    plot_endimp(base_path)
     print('done!')

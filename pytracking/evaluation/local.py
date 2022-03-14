@@ -4,10 +4,11 @@ import os
 def local_env_settings():
     settings = EnvSettings()
 
-    base_path = '/home/hexd6/code/Tracking/'
-    dataset_path = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/'
+    base_path = 'D:/Tracking/'
+    # dataset_path = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/'  # linux path
+    dataset_path = 'D:/Tracking/Datasets/'  # windows path
 
-    settings.network_path = dataset_path + 'pretrained_networks'
+    settings.network_path = 'D:/Tracking/Networks'
     # Set your local paths here.
     settings.dataspec_path = base_path + 'VisTrack/ltr/data_specs'
     settings.davis_dir = dataset_path + 'DAVIS/2017'

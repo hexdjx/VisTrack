@@ -2,6 +2,11 @@
 
 ## Published Papers: 
 ### [Raw tracking results and trained models](https://drive.google.com/drive/folders/182NbsBrVR9PICR9aSkb2IhUDvrlSsTDT?usp=sharing)
+### Exploring Reliable Visual Tracking via Target Embedding Network (RVT)
+**Please cite:  
+Xuedong He, Calvin Yu-Chian Chen. Exploring Reliable Visual Tracking via Target Embedding Network[J]. Knowledge-Based Systems, 2022.**
+
+
 ### Learning Object-Uncertainty Policy for Visual Tracking (OUPT)
 **Please cite:  
 [Xuedong He, Calvin Yu-Chian Chen. Learning Object-Uncertainty Policy for Visual Tracking[J]. Information Sciences, 2022, 582: 60-72.](https://doi.org/10.1016/j.ins.2021.09.002)**

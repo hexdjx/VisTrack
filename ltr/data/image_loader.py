@@ -3,7 +3,7 @@ import cv2 as cv
 from PIL import Image
 import numpy as np
 
-davis_palette = np.repeat(np.expand_dims(np.arange(0,256), 1), 3, 1).astype(np.uint8)
+davis_palette = np.repeat(np.expand_dims(np.arange(0, 256), 1), 3, 1).astype(np.uint8)
 davis_palette[:22, :] = [[0, 0, 0], [128, 0, 0], [0, 128, 0], [128, 128, 0],
                          [0, 0, 128], [128, 0, 128], [0, 128, 128], [128, 128, 128],
                          [64, 0, 0], [191, 0, 0], [64, 128, 0], [191, 128, 0],
@@ -27,6 +27,7 @@ def default_image_loader(path):
     if default_image_loader.use_jpeg4py:
         return jpeg4py_loader(path)
     return opencv_loader(path)
+
 
 default_image_loader.use_jpeg4py = None
 
@@ -85,7 +86,7 @@ def imread_indexed(filename):
 
     im = Image.open(filename)
 
-    annotation = np.atleast_3d(im)[...,0]
+    annotation = np.atleast_3d(im)[..., 0]
     return annotation
 
 

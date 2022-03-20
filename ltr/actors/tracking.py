@@ -310,7 +310,7 @@ class KYSActor(BaseActor):
 
             is_valid = valid_samples[i, :].view(1, -1, 1, 1).byte()
             uncertain_frame = (test_visibility[i, :].view(1, -1, 1, 1) < 0.75) * (
-                        test_visibility[i, :].view(1, -1, 1, 1) > 0.25)
+                    test_visibility[i, :].view(1, -1, 1, 1) > 0.25)
 
             is_valid = is_valid * ~uncertain_frame
 
@@ -483,6 +483,7 @@ class DiMPSimpleActor(BaseActor):
 
 class TargetCandiateMatchingActor(BaseActor):
     """Actor for training the KeepTrack network."""
+
     def __init__(self, net, objective):
         super().__init__(net, objective)
 
@@ -500,7 +501,6 @@ class TargetCandiateMatchingActor(BaseActor):
 
         # Classification losses for the different optimization iterations
         losses = self.objective['target_candidate_matching'](**data, **preds)
-
 
         # Total loss
         loss = losses['total'].mean()

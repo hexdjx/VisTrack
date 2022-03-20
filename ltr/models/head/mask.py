@@ -11,11 +11,11 @@ def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
         nn.ReLU(inplace=True))
 
 
-class Mask_Predictor(nn.Module):
+class Mask_Predictor_coarse(nn.Module):
     """ Mask Predictor module"""
 
     def __init__(self, inplanes=64, channel=256):
-        super(Mask_Predictor, self).__init__()
+        super(Mask_Predictor_coarse, self).__init__()
         self.conv1 = conv(inplanes, channel)
         self.conv2 = conv(channel, channel)
         self.conv3 = conv(channel, channel)
@@ -33,9 +33,9 @@ class Mask_Predictor(nn.Module):
 
 
 # more fine mask predictor, fuse backbone features (refer to SiamMask)
-class Mask_Predictor_fine(nn.Module):
+class Mask_Predictor(nn.Module):
     def __init__(self):
-        super(Mask_Predictor_fine, self).__init__()
+        super(Mask_Predictor, self).__init__()
         self.v0 = nn.Sequential(
             nn.Conv2d(64, 16, 3, padding=1),
             nn.ReLU(inplace=True),

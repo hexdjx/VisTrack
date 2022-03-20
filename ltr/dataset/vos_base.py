@@ -128,7 +128,7 @@ class VOSMeta:
         return d2
 
     def select_split(self, dataset_name, split):
-        ltr_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..')
+        ltr_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
         sequences = set([s.strip() for s in open(os.path.join(ltr_path, 'data_specs', dataset_name + '_' + split + '.txt')).readlines()])
         all_sequences = set(self._data.keys())
         to_remove = all_sequences.difference(sequences)
@@ -396,3 +396,9 @@ class VOSDatasetBase(BaseVideoDataset):
 
     def has_segmentation_info(self):
         return True
+
+    '''newly added'''
+    def has_mask(self):
+        """数据集是否提供mask-level的标签"""
+        return True
+

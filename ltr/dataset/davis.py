@@ -16,6 +16,7 @@ class Davis(VOSDatasetBase):
 
         Download the dataset from https://davischallenge.org/davis2017/code.html
         """
+
     def __init__(self, root=None, sequences=None, version='2017', split='train', multiobj=True,
                  vis_threshold=10, image_loader=jpeg4py_loader):
         """
@@ -38,12 +39,12 @@ class Davis(VOSDatasetBase):
             else:
                 raise Exception('Unknown split {}'.format(split))
         else:
-            root = env_settings().davis16_dir if root is None else root
-            
+            root = env_settings().davis_dir if root is None else root  # rectified
+
         super().__init__(name='DAVIS', root=Path(root), version=version, split=split, multiobj=multiobj,
                          vis_threshold=vis_threshold, image_loader=image_loader)
 
-        dset_path = self.root
+        dset_path = self.root / version  # ##rectified
         self._jpeg_path = dset_path / 'JPEGImages' / '480p'
         self._anno_path = dset_path / 'Annotations' / '480p'
 

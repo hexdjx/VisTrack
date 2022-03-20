@@ -107,3 +107,7 @@ class BaseVideoDataset(torch.utils.data.Dataset):
         """
         raise NotImplementedError
 
+    '''newly added'''
+    def has_mask(self):
+        """数据集是否提供mask-level的标签"""
+        return False

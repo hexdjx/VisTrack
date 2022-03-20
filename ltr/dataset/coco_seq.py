@@ -59,7 +59,7 @@ class MSCOCOSeq(BaseVideoDataset):
         self.sequence_list = self._get_sequence_list()
 
         if data_fraction is not None:
-            self.sequence_list = random.sample(self.sequence_list, int(len(self.sequence_list)*data_fraction))
+            self.sequence_list = random.sample(self.sequence_list, int(len(self.sequence_list) * data_fraction))
         self.seq_per_class = self._build_seq_per_class()
 
     def _get_sequence_list(self):
@@ -143,7 +143,6 @@ class MSCOCOSeq(BaseVideoDataset):
                                        'root_class': None,
                                        'motion_adverb': None})
         return object_meta
-
 
     def get_class_name(self, seq_id):
         cat_dict_current = self.cats[self.coco_set.anns[self.sequence_list[seq_id]]['category_id']]

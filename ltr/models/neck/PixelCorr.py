@@ -7,7 +7,6 @@ def pixel_corr(x, kernel):
     """pixel-wise neck"""
     size = kernel.size()
     CORR = []
-    Kernels = []
     for i in range(len(x)):
         ker = kernel[i:i + 1]
         feat = x[i:i + 1]
@@ -20,19 +19,13 @@ def pixel_corr(x, kernel):
 
 
 class PixelCorr(nn.Module):
-    """Network module for IoU prediction. Refer to the ATOM paper for an illustration of the architecture.
-    It uses two backbone feature layers as input.
-    args:
-        input_dim:  Feature dimensionality of the two input backbone layers.
-        pred_input_dim:  Dimensionality input the the prediction network.
-        pred_inter_dim:  Intermediate dimensionality in the prediction network."""
 
     def __init__(self, pool_size=8, use_post_corr=True, use_NL=True):
         super().__init__()
         self.prroi_pool = PrRoIPool2D(pool_size, pool_size, 1 / 16)
         num_corr_channel = pool_size * pool_size
         self.use_post_corr = use_post_corr
-        self.use.NL = use_NL
+        self.use_NL = use_NL
         if use_post_corr:
             self.post_corr = nn.Sequential(
                 nn.Conv2d(64, 128, kernel_size=(1, 1), padding=0, stride=1),
@@ -50,7 +43,7 @@ class PixelCorr(nn.Module):
             self.spatial_attention = NONLocalBlock(in_channels=num_corr_channel)
 
     def forward(self, feat1, feat2, bb1):
-        """Runs the ATOM IoUNet during training operation.
+        """
         This forward pass is mainly used for training. Call the individual functions during tracking instead.
         args:
             feat1:  Features from the reference frames (4 or 5 dims).

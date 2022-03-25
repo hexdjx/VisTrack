@@ -9,7 +9,7 @@ from pytracking.utils.visdom import Visdom
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pytracking.utils.plotting import draw_figure, overlay_mask, plot_scatter
-from pytracking.utils.convert_vot_anno_to_rect import convert_vot_anno_to_rect
+from pytracking.utils.box_utils import convert_vot_anno_to_rect
 from ltr.data.bounding_box_utils import masks_to_bboxes
 from pytracking.evaluation.multi_object_wrapper import MultiObjectWrapper
 from pathlib import Path

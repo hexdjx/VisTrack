@@ -12,27 +12,6 @@ def torch_to_numpy(a: torch.Tensor):
     return a.squeeze(0).permute(1, 2, 0).numpy()
 
 
-def im_show(im, name):
-    im_patch = torch_to_numpy(im)
-
-    plt.figure(10)
-    plt.tight_layout()
-    plt.cla()
-    plt.imshow(im_patch.astype(np.int))
-    plt.axis('off')
-    plt.axis('equal')
-    plt.show()
-    # plt.savefig('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name),
-    #             format='png', dpi=300)
-
-
-def im_save(im, name):
-    im_patch = torch_to_numpy(im)
-    from PIL import Image
-    img = Image.fromarray(np.uint8(im_patch))
-    img.save('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name))
-
-
 def sample_patch_transformed(im, pos, scale, image_sz, transforms, is_mask=False):
     """Extract transformed image samples.
     args:
@@ -48,8 +27,6 @@ def sample_patch_transformed(im, pos, scale, image_sz, transforms, is_mask=False
 
     # Apply transforms
     im_patches = torch.cat([T(im_patch, is_mask=is_mask) for T in transforms])
-
-    # im_save(im_patches[0, ...], 'img_patch1')
 
     return im_patches
 
@@ -167,8 +144,6 @@ def sample_patch_multiscale(im, pos, scales, image_sz, mode: str = 'replicate', 
     im_patches = torch.cat(list(patch_iter))
     patch_coords = torch.cat(list(coord_iter))
 
-    # im_save(im_patches[0, ...], 'test_img_patch')
-
     return im_patches, patch_coords
 
 
@@ -193,9 +168,6 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
     else:
         im_patch = F.pad(im, (-tl[1].item(), br[1].item() - im.shape[3], -tl[0].item(), br[0].item() - im.shape[2]))
 
-    # im_show(im_patch, 'oupt_target_patch')
-    # im_save(im_patch, 'origin_target_patch')
-
     # Get image coordinates
     patch_coord = torch.cat((tl, br)).view(1, 4)
 
@@ -207,8 +179,6 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
         im_patch = F.interpolate(im_patch, output_sz.long().tolist(), mode='bilinear')
     else:
         im_patch = F.interpolate(im_patch, output_sz.long().tolist(), mode='nearest')
-
-    # im_save(im_patch, 'resize_target_patch')
 
     return im_patch, patch_coord
 ############################################################

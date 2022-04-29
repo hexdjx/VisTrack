@@ -1,5 +1,5 @@
 import torch
-from pytracking.features.preprocessing import sample_patch, sample_target_patch
+from pytracking.features.preprocessing import sample_patch
 from pytracking import TensorList
 
 

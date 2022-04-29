@@ -6,5 +6,5 @@
 *.ipynb_checkpoints/
 /pytracking/results/
 /pytracking/analysis/utils/results/
-/pytracking/VOT/*workspace/
+/pytracking/VOT/vot*/
 

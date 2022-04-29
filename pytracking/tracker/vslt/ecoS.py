@@ -213,7 +213,7 @@ class ECO(BaseTracker):
 
         if getattr(self.params, 'is_multiscale_ratio', False) is True:
             sample_scales, ms = _ms_ratio(self.params.scale_factors)
-            test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+            test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
 
         if getattr(self.params, 'is_multiscale_var', False) is True:
             sample_scales = self.target_scale * self.params.scale_factors
@@ -221,7 +221,7 @@ class ECO(BaseTracker):
 
         if getattr(self.params, 'is_multiscale_var_ratio', False) is True:
             sample_scales, ms = _ms_ratio(self.params.scale_factors)
-            test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+            test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
 
         # Compute scores
         sf = self.apply_filter(test_x)
@@ -284,7 +284,7 @@ class ECO(BaseTracker):
 
                         sample_scales, ms = _ms_ratio(scale_factors)
 
-                        test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+                        test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
                         scores_raw = self.apply_filter(test_x)
                         translation_vec0, new_scale_ind, s0 = self.localize_target(scores_raw, ms)
                         if new_scale_ind >= 2:
@@ -303,7 +303,7 @@ class ECO(BaseTracker):
 
                         sample_scales, ms = _ms_ratio(scale_factors)
 
-                        test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+                        test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
                         scores_raw = self.apply_filter(test_x)
                         translation_vec1, new_scale_ind, s1 = self.localize_target(scores_raw, ms)
                         if new_scale_ind <= 1:
@@ -430,15 +430,8 @@ class ECO(BaseTracker):
     def extract_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor):
         return self.params.features.extract(im, pos, scales, sz)[0]
 
-    def extract_ms_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor):
-        return self.params.features.extract_ms(im, pos, scales, sz)[0]
-
     def extract_fourier_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> TensorList:
         x = self.extract_sample(im, pos, scales, sz)
-        return self.preprocess_sample(self.project_sample(x))
-
-    def extract_ms_processed_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> TensorList:
-        x = self.extract_ms_sample(im, pos, scales, sz)
         return self.preprocess_sample(self.project_sample(x))
 
     def extract_processed_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> TensorList:

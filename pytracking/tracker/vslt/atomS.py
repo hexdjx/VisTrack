@@ -253,7 +253,7 @@ class ATOM(BaseTracker):
 
         if getattr(self.params, 'is_multiscale_ratio', False) is True:
             sample_scales = _ms_ratio(self.params.scale_factors)
-            test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+            test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
 
         if getattr(self.params, 'is_multiscale_var', False) is True:
             sample_scales = self.target_scale * self.params.scale_factors
@@ -261,7 +261,7 @@ class ATOM(BaseTracker):
 
         if getattr(self.params, 'is_multiscale_var_ratio', False) is True:
             sample_scales = _ms_ratio(self.params.scale_factors)
-            test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+            test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
 
         # Compute scores
         scores_raw = self.apply_filter(test_x)
@@ -325,7 +325,7 @@ class ATOM(BaseTracker):
 
                         sample_scales = _ms_ratio(scale_factors)
 
-                        test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+                        test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
                         scores_raw = self.apply_filter(test_x)
                         translation_vec0, new_scale_ind, s0, flag0 = self.localize_target(scores_raw)
                         if new_scale_ind >= 2:
@@ -344,7 +344,7 @@ class ATOM(BaseTracker):
 
                         sample_scales = _ms_ratio(scale_factors)
 
-                        test_x = self.extract_ms_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
+                        test_x = self.extract_processed_sample(im, self.pos, sample_scales, self.img_sample_sz)
                         scores_raw = self.apply_filter(test_x)
                         translation_vec1, new_scale_ind, s1, flag1 = self.localize_target(scores_raw)
                         if new_scale_ind <= 1:
@@ -544,11 +544,6 @@ class ATOM(BaseTracker):
     def extract_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor):
         return self.params.features.extract(im, pos, scales, sz)[0]
 
-    # --my modify--#######################################################################
-    def extract_ms_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor):
-        return self.params.features.extract_ms(im, pos, scales, sz)[0]
-    ######################################################################################
-
     def get_iou_features(self):
         return self.params.features.get_unique_attribute('iounet_features')
 
@@ -559,19 +554,6 @@ class ATOM(BaseTracker):
             TensorList, TensorList):
         x = self.extract_sample(im, pos, scales, sz)
         return self.preprocess_sample(self.project_sample(x))
-
-    ########################################
-    # my add
-    def extract_ms_processed_sample(self, im: torch.Tensor, pos: torch.Tensor, scales, sz: torch.Tensor) -> (
-            TensorList, TensorList):
-        x = self.extract_ms_sample(im, pos, scales, sz)
-        return self.preprocess_sample(self.project_sample(x))
-    ########################################
-
-    def extract_target(self, im: torch.Tensor, pos: torch.Tensor, target_sz, resized_sz: torch.Tensor) -> (
-            TensorList, TensorList):
-        x = self.params.features.extract_target(im, pos, target_sz, resized_sz)
-        return x
 
     def preprocess_sample(self, x: TensorList) -> (TensorList, TensorList):
         if self.params.get('_feature_window', False):

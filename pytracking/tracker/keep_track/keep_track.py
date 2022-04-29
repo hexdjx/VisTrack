@@ -361,10 +361,6 @@ class KeepTrack(BaseTracker):
 
         if self.params.get('advanced_localization', False):
             return self.localize_advanced(scores, sample_pos, sample_scales)
-        ########################################
-        else:
-            return self.localize_advanced2(scores, sample_pos, sample_scales)
-        ########################################
 
         # Get maximum
         score_sz = torch.Tensor(list(scores.shape[-2:]))
@@ -479,107 +475,6 @@ class KeepTrack(BaseTracker):
         return translation_vec1, scale_ind, scores_hn, 'normal'
 
         # --my modify-- #################################
-    def localize_advanced2(self, scores, sample_pos, sample_scales):
-        """Run the target advanced localization (as in ATOM)."""
-
-        sz = scores.shape[-2:]
-        score_sz = torch.Tensor(list(sz))
-        output_sz = score_sz - (self.kernel_size + 1) % 2
-        score_center = (score_sz - 1) / 2
-
-        scores_hn = scores
-        if self.output_window is not None and self.params.get('perform_hn_without_windowing', False):
-            scores_hn = scores.clone()
-            scores *= self.output_window
-
-        max_score1, max_disp1 = dcf.max2d(scores)
-        _, scale_ind = torch.max(max_score1, dim=0)
-        sample_scale = sample_scales[scale_ind]
-        max_score1 = max_score1[scale_ind]
-        max_disp1 = max_disp1[scale_ind, ...].float().cpu().view(-1)
-        target_disp1 = max_disp1 - score_center
-        translation_vec1 = target_disp1 * (self.img_support_sz / output_sz) * sample_scale
-
-        # Mask out target neighborhood
-        target_neigh_sz = self.params.target_neighborhood_scale * (self.target_sz / sample_scale) * (
-                output_sz / self.img_support_sz)
-
-        tneigh_top = max(round(max_disp1[0].item() - target_neigh_sz[0].item() / 2), 0)
-        tneigh_bottom = min(round(max_disp1[0].item() + target_neigh_sz[0].item() / 2 + 1), sz[0])
-        tneigh_left = max(round(max_disp1[1].item() - target_neigh_sz[1].item() / 2), 0)
-        tneigh_right = min(round(max_disp1[1].item() + target_neigh_sz[1].item() / 2 + 1), sz[1])
-
-        #########################################################################################
-        # my add: score index calculation
-        if self.params.get('score_psme', False):
-            score = scores_hn[scale_ind:scale_ind + 1, ...].clone()
-            scores_masked = score.clone()
-            scores_masked[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right] = 0
-
-            # score = score[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right]
-
-            score_index = PSME(score, scores_masked)
-            if self.frame_num == 2 and self.params.get('adaptive_threshold', False):
-                self.params.score_threshold = score_index * self.params.hard_negative_threshold
-
-        if self.params.get('score_psr', False):
-            score_psr = scores_hn[scale_ind:scale_ind + 1, ...].clone()
-            score_psr = score_psr[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right]
-            score_index = PSR(score_psr)
-            if self.frame_num == 2 and self.params.get('adaptive_threshold', False):
-                self.params.score_threshold = score_index * self.params.hard_negative_threshold
-
-        if self.params.get('score_apce', False):
-            score_apce = scores_hn[scale_ind:scale_ind + 1, ...].clone()
-            score_index = APCE(score_apce)
-            if self.frame_num == 2 and self.params.get('adaptive_threshold', False):
-                self.params.score_threshold = score_index * self.params.hard_negative_threshold
-        # print(score_index)
-        #########################################################################################
-
-        if max_score1.item() < self.params.target_not_found_threshold:
-            return translation_vec1, scale_ind, scores_hn, 'not_found'
-        if max_score1.item() < self.params.get('uncertain_threshold', -float('inf')):
-            return translation_vec1, scale_ind, scores_hn, 'uncertain'
-        if max_score1.item() < self.params.get('hard_sample_threshold', -float('inf')):
-            return translation_vec1, scale_ind, scores_hn, 'hard_negative'
-
-        scores_masked = scores_hn[scale_ind:scale_ind + 1, ...].clone()
-        scores_masked[..., tneigh_top:tneigh_bottom, tneigh_left:tneigh_right] = 0
-
-        # Find new maximum
-        max_score2, max_disp2 = dcf.max2d(scores_masked)
-        max_disp2 = max_disp2.float().cpu().view(-1)
-        target_disp2 = max_disp2 - score_center
-        translation_vec2 = target_disp2 * (self.img_support_sz / output_sz) * sample_scale
-
-        prev_target_vec = (self.pos - sample_pos[scale_ind, :]) / ((self.img_support_sz / output_sz) * sample_scale)
-
-        if self.params.get('score_index', False):
-            if score_index < self.params.score_threshold:
-                return translation_vec1, scale_ind, scores_hn, 'uncertain'
-
-        # Handle the different cases
-        if max_score2 > self.params.distractor_threshold * max_score1:
-            disp_norm1 = torch.sqrt(torch.sum((target_disp1 - prev_target_vec) ** 2))
-            disp_norm2 = torch.sqrt(torch.sum((target_disp2 - prev_target_vec) ** 2))
-            disp_threshold = self.params.dispalcement_scale * math.sqrt(sz[0] * sz[1]) / 2
-
-            if disp_norm2 > disp_threshold > disp_norm1:
-                return translation_vec1, scale_ind, scores_hn, 'hard_negative'
-            if disp_norm2 < disp_threshold and disp_norm1 > disp_threshold:
-                return translation_vec2, scale_ind, scores_hn, 'hard_negative'
-            if disp_norm2 > disp_threshold and disp_norm1 > disp_threshold:
-                return translation_vec1, scale_ind, scores_hn, 'uncertain'
-
-            # If also the distractor is close, return with highest score
-            return translation_vec1, scale_ind, scores_hn, 'uncertain'
-
-        if max_score2 > self.params.hard_negative_threshold * max_score1 and max_score2 > self.params.target_not_found_threshold:
-            return translation_vec1, scale_ind, scores_hn, 'hard_negative'
-
-        return translation_vec1, scale_ind, scores_hn, 'normal'
-
 
     def extract_descriptors_and_keypoints(self, backbone_feat, score_map, search_area_box):
         th = self.params.get('local_max_candidate_score_th', 0.05)
@@ -1382,20 +1277,3 @@ class KeepTrack(BaseTracker):
             ax.axis('off')
             self.visdom.visdom.matplot(plt, opts={'title': 'matching between frames'}, win='matching between frames')
             plt.close(fig)
-
-    #############################################################
-    # my add
-    def get_target_embedding(self, backbone_feat):
-        with torch.no_grad():
-            return self.verify_net.extract_target_embedding(backbone_feat)
-
-    def get_verify_embedding(self, im: torch.Tensor):
-        t_sz = self.params.image_target_size
-        t_sz = torch.Tensor([t_sz, t_sz] if isinstance(t_sz, int) else t_sz)
-        target_patch, _ = sample_target_patch(im, self.pos.round(), self.target_sz, t_sz)
-
-        with torch.no_grad():
-            backbone_feat = self.verify_net.extract_backbone(target_patch)
-            target_embedding = self.get_target_embedding(backbone_feat)
-        return target_embedding
-    #################################################################

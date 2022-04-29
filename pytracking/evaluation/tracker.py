@@ -177,9 +177,11 @@ class Tracker:
         image = self._read_image(seq.frames[0])
 
         if tracker.params.visualization and self.visdom is None:
+            ################################################################
+            # my modify
             # self.visualize(image, init_info.get('init_bbox'))
-            self.visualize(seq.ground_truth_rect[0], image, init_info.get('init_bbox'))  # my modify
-
+            self.visualize(image, init_info.get('init_bbox'), gt_state=seq.ground_truth_rect[0])
+            ################################################################
         start_time = time.time()
         out = tracker.initialize(image, init_info)
         if out is None:
@@ -219,9 +221,11 @@ class Tracker:
             if self.visdom is not None:
                 tracker.visdom_draw_tracking(image, out['target_bbox'], segmentation)
             elif tracker.params.visualization:
+                ################################################################
                 # my modify
-                self.visualize(seq.ground_truth_rect[frame_num], image, out['target_bbox'], segmentation)
+                self.visualize(image, out['target_bbox'], segmentation, gt_state=seq.ground_truth_rect[frame_num])
                 # self.visualize(image, out['target_bbox'], segmentation)
+                ################################################################
 
         for key in ['target_bbox', 'segmentation']:
             if key in output and len(output[key]) <= 1:
@@ -661,8 +665,7 @@ class Tracker:
         self.fig.canvas.mpl_connect('key_press_event', self.press)
         plt.tight_layout()
 
-    def visualize(self, gt_state, image, state, segmentation=None):
-        self.gt_state = gt_state
+    def visualize(self, image, state, segmentation=None, gt_state=None):
         self.ax.cla()
         self.ax.imshow(image)
         if segmentation is not None:
@@ -681,21 +684,14 @@ class Tracker:
 
         #############################################################
         # my add
-        if getattr(self, 'gt_state', None) is not None:
-            gt_state = self.gt_state
+        if gt_state is not None:
             rect = patches.Rectangle((gt_state[0], gt_state[1]), gt_state[2], gt_state[3], linewidth=1, edgecolor='r',
                                      facecolor='none')
             self.ax.add_patch(rect)
-
-        # self.ax.text(box[0], box[1] - 5, 'similarity={}'.format(similarity), color='r', fontsize=16)
-        # self.ax.text(box[0], box[1] - 25, 'max_score={}'.format(max_score), color='r', fontsize=16)
-
         #############################################################
+
         self.ax.set_axis_off()
         self.ax.axis('equal')
-
-        # img_path = '/home/hexd6/code/Tracking/VisTrack/pytracking/evaluation/img_result/' + str(frame_num) + '.png'
-        # plt.savefig(img_path)
 
         draw_figure(self.fig)
 

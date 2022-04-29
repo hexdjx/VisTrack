@@ -36,6 +36,7 @@ class OPEBenchmark:
         for tracker_name in eval_trackers:
             success_ret_ = {}
             for video in self.dataset:
+                # print(video.name)
                 gt_traj = np.array(video.gt_traj)
                 if tracker_name not in video.pred_trajs:
                     tracker_traj = video.load_tracker(self.dataset.tracker_path,

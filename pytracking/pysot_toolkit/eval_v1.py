@@ -16,35 +16,36 @@ import numpy as np
 
 parser = argparse.ArgumentParser(description='tracking evaluation')
 parser.add_argument('--tracker_path', '-p', type=str,
-                    default='/home/hexd6/code/Tracking/VisTrack/pytracking/results/',
+                    default='/home/hexd6/code/Tracking/VisTrack/pytracking/results/tracking_results',
                     help='tracker result path')
-parser.add_argument('--dataset', '-d', type=str, default='VOT2018',
+parser.add_argument('--dataset', '-d', type=str, default='LaSOT',  # OTB100, UAV123, NFS, LaSOT
                     help='dataset name')
 parser.add_argument('--num', '-n', default=1, type=int,
                     help='number of thread to eval')
-parser.add_argument('--tracker_prefix', '-t', default='SuperDiMP',
-                    type=str, help='tracker name')
-parser.add_argument('--show_video_level', '-s', dest='show_video_level',
+
+# my add
+parser.add_argument('--tracker_name', type=str, default='DiMP', help='Name of tracking method.')
+parser.add_argument('--tracker_param', type=str, default='super_dimp_000', help='Name of parameter file.')
+
+parser.add_argument('--show_video_level', '-s', dest='show_video_level',  # show each video result
                     action='store_true')
-parser.add_argument('--vis', dest='vis', action='store_false')
-parser.set_defaults(show_video_level=False)
+parser.add_argument('--vis', dest='vis', action='store_true')  # plot curve chart
 args = parser.parse_args()
 
 
 def main():
-    tracker_dir = os.path.join(args.tracker_path, args.dataset)
-    trackers = glob(os.path.join(args.tracker_path,
-                                 args.dataset,
-                                 args.tracker_prefix + '*'))
-    trackers = [x.split('/')[-1] for x in trackers]
+    tracker_dir = os.path.join(args.tracker_path, args.tracker_name)
+
+    trackers = [args.tracker_param]
 
     assert len(trackers) > 0
     args.num = min(args.num, len(trackers))
 
-    root = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/VOT'
+    # dataset root
+    root = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/'
 
     root = os.path.join(root, args.dataset)
-    if 'OTB' in args.dataset:
+    if 'OTB100' in args.dataset:
         dataset = OTBDataset(args.dataset, root)
         dataset.set_tracker(tracker_dir, trackers)
         benchmark = OPEBenchmark(dataset)

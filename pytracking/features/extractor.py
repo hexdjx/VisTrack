@@ -125,47 +125,6 @@ class MultiResolutionExtractor(ExtractorBase):
         else:
             return feature_map, patch_coords
 
-    # --my modify--#####################################################################################
-    def extract_ms(self, im, pos, scales, image_sz, return_patches=False):
-        """Extract features.
-        args:
-            im: Image.
-            pos: Center position for extraction.
-            scales: Image scales to extract features from.
-            image_sz: Size to resize the image samples to before extraction.
-        """
-        if isinstance(scales, (int, float)):
-            scales = [scales]
-
-        # Get image patches
-
-        patch_iter, coord_iter = zip(*(sample_patch(im, pos, s * image_sz, image_sz, mode=self.patch_mode,
-                                                    max_scale_change=self.max_scale_change) for s in scales))
-        im_patches = torch.cat(list(patch_iter))
-        patch_coords = torch.cat(list(coord_iter))
-
-        # Compute features
-        feature_map = TensorList([f.get_feature(im_patches) for f in self.features]).unroll()
-
-        if return_patches:
-            return feature_map, patch_coords, im_patches
-        else:
-            return feature_map, patch_coords
-
-    def extract_target(self, im, pos, target_sz, image_sz, return_patches=False):
-
-        # Get image patches
-        im_patch, _ = sample_target_patch(im, pos, target_sz, image_sz)
-
-        # Compute features
-        feature_map = TensorList([f.get_feature(im_patch) for f in self.features]).unroll()
-
-        if return_patches:
-            return feature_map, im_patch
-        else:
-            return feature_map
-    #####################################################################################
-
     def extract_transformed(self, im, pos, scale, image_sz, transforms):
         """Extract features from a set of transformed image samples.
         args:

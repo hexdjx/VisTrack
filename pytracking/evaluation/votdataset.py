@@ -43,16 +43,16 @@ class VOTDataset(BaseDataset):
                   for frame_num in range(start_frame, end_frame+1)]
 
         # Convert gt
-        # if ground_truth_rect.shape[1] > 4:
-        #     gt_x_all = ground_truth_rect[:, [0, 2, 4, 6]]
-        #     gt_y_all = ground_truth_rect[:, [1, 3, 5, 7]]
-        #
-        #     x1 = np.amin(gt_x_all, 1).reshape(-1,1)
-        #     y1 = np.amin(gt_y_all, 1).reshape(-1,1)
-        #     x2 = np.amax(gt_x_all, 1).reshape(-1,1)
-        #     y2 = np.amax(gt_y_all, 1).reshape(-1,1)
-        #
-        #     ground_truth_rect = np.concatenate((x1, y1, x2-x1, y2-y1), 1)
+        if ground_truth_rect.shape[1] > 4:
+            gt_x_all = ground_truth_rect[:, [0, 2, 4, 6]]
+            gt_y_all = ground_truth_rect[:, [1, 3, 5, 7]]
+
+            x1 = np.amin(gt_x_all, 1).reshape(-1,1)
+            y1 = np.amin(gt_y_all, 1).reshape(-1,1)
+            x2 = np.amax(gt_x_all, 1).reshape(-1,1)
+            y2 = np.amax(gt_y_all, 1).reshape(-1,1)
+
+            ground_truth_rect = np.concatenate((x1, y1, x2-x1, y2-y1), 1)
         return Sequence(sequence_name, frames, 'vot', ground_truth_rect)
 
     def __len__(self):

@@ -25,7 +25,7 @@ def local_env_settings():
     settings.trackingnet_path = dataset_path + 'TrackingNet'
     settings.uav_path = dataset_path + 'UAV123'
     settings.youtubevos_dir = dataset_path + 'YouTubeVOS/2018'
-    settings.vot_path = dataset_path + 'VOT/2018'
+    settings.vot_path = dataset_path + 'VOT/VOT2018'
     # result paths
     settings.result_plot_path = base_path + 'VisTrack/pytracking/results/plots/'
     settings.results_path = base_path + 'VisTrack/pytracking/results/tracking_results/'

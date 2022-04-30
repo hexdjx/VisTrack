@@ -4,47 +4,7 @@ import torch
 import cv2
 
 from mpl_toolkits.mplot3d import Axes3D
-
-
-#########################################################################################
-# my add
-# visualize respond map in 3D
-def mesh_score(s):
-    score = torch.squeeze(s.cpu()).numpy()
-    [x, y] = np.shape(score)
-    fig = plt.figure(10)
-    ax = Axes3D(fig)
-    X = np.arange(0, x)
-    Y = np.arange(0, y)
-    X, Y = np.meshgrid(X, Y)
-    Z = score
-    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', linewidth=0,
-                           antialiased=False)  # rainbow coolwarm
-    # ax.contour(X, Y, Z, zdir='z', offset=-1, cmap=plt.get_cmap('rainbow'))
-    # fig.colorbar(surf, shrink=0.5, aspect=5)
-    # ax.set_zlim(-0.2, 1.2)
-    # ax.set_zlabel('Score')
-    # plt.axis('off')
-    # plt.show()
-    # plt.savefig('score_map.png', format='png', dpi=300)
-
-
-def plot_scatter(psr, apce, psmd, det):
-    x_frame = [i + 1 for i in range(len(psr))]
-    plt.plot(x_frame, psr, color='red', linewidth=2.0, linestyle='-')
-    plt.plot(x_frame, apce, color='green', linewidth=2.0, linestyle='--')
-    plt.plot(x_frame, psmd, color='blue', linewidth=2.0, linestyle='-.')
-    # plt.plot(x_frame, det, color='black', linewidth=2.0, linestyle=':')
-
-    plt.title('Score index', fontsize=24)
-    plt.xlabel('video frame')
-    plt.ylabel('score index')
-
-    # 保存图片到本地
-    # plt.savefig('scale_precision.png', dpi=300, bbox_inches='tight')
-    plt.show()
-
-#########################################################################################
+from pytracking.features.preprocessing import torch_to_numpy
 
 def draw_figure(fig):
     fig.canvas.draw()
@@ -195,3 +155,63 @@ def overlay_mask(im, ann, alpha=0.5, colors=None, contour_thickness=None):
             cv2.drawContours(img, contours[0], -1, colors[obj_id].tolist(),
                              contour_thickness)
     return img
+
+#########################################################################################
+# my add
+# visualize respond map in 3D
+def mesh_score(s, fig_num=None, frame_num=None):
+    score = s.squeeze().cpu().clone().detach().numpy()
+
+    [x, y] = np.shape(score)
+    fig = plt.figure(fig_num)
+    ax = Axes3D(fig)
+    X = np.arange(0, x)
+    Y = np.arange(0, y)
+    X, Y = np.meshgrid(X, Y)
+    Z = score
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', linewidth=0,
+                           antialiased=False)  # rainbow coolwarm
+    # ax.contour(X, Y, Z, zdir='z', offset=-1, cmap=plt.get_cmap('rainbow'))
+    # fig.colorbar(surf, shrink=0.5, aspect=5)
+    # ax.set_zlim(-0.2, 1.2)
+    # ax.set_zlabel('Score')
+    plt.axis('off')
+    # plt.show()
+    plt.savefig('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/fudimp/{:08d}.png'
+                .format(frame_num), format='png', dpi=300)
+
+
+def plot_scatter(psr, apce, psmd, det):
+    x_frame = [i + 1 for i in range(len(psr))]
+    plt.plot(x_frame, psr, color='red', linewidth=2.0, linestyle='-')
+    plt.plot(x_frame, apce, color='green', linewidth=2.0, linestyle='--')
+    plt.plot(x_frame, psmd, color='blue', linewidth=2.0, linestyle='-.')
+    # plt.plot(x_frame, det, color='black', linewidth=2.0, linestyle=':')
+
+    plt.title('Score index', fontsize=24)
+    plt.xlabel('video frame')
+    plt.ylabel('score index')
+
+    # 保存图片到本地
+    # plt.savefig('scale_precision.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+def im_show(im, name):
+    im_patch = torch_to_numpy(im)
+
+    plt.figure(10)
+    plt.tight_layout()
+    plt.cla()
+    plt.imshow(im_patch.astype(np.int))
+    plt.axis('off')
+    plt.axis('equal')
+    plt.show()
+    # plt.savefig('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name),
+    #             format='png', dpi=300)
+
+def im_save(im, name):
+    im_patch = torch_to_numpy(im)
+    from PIL import Image
+    img = Image.fromarray(np.uint8(im_patch))
+    img.save('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name))
+#########################################################################################

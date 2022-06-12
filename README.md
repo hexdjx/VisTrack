@@ -18,6 +18,6 @@
 Thanks for the great [PyTracking](https://github.com/visionml/pytracking) Library, which helps us to quickly implement our ideas.
 
 ##Tips
-The UAV123 result of pysot and pytracking is consistent, which is lower than the results of got10k toolkit. 
+The UAV123 results of pysot and pytracking are consistent, which are lower than the results of got10k toolkit. 
 From the results reported in the original conference papers, the author probably uses the evaluation results given by got10k.
 

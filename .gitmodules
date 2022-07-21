@@ -1,3 +1,0 @@
-[submodule "ltr/external/PreciseRoIPooling"]
-	path = ltr/external/PreciseRoIPooling
-	url = https://github.com/vacancy/PreciseRoIPooling.git

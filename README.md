@@ -1,4 +1,5 @@
-# New improved tracker, code coming soon.  
+# Visual Tracking
+This repository records my proposed visual tracking methods based on [PyTracking](https://github.com/visionml/pytracking) Library, also including practicable learning code [[Notebook](/pytracking/analysis/utils/notebook/)]. 
 
 ## Trackers
 Here is a list of my improved trackers.
@@ -12,6 +13,4 @@ Here is a list of my improved trackers.
 * The UAV123 results of pysot and pytracking are consistent, which are lower than the results of got10k toolkit. 
   From the results reported in the original conference papers, the authors probably use the evaluation results given by got10k.
 
-## Acknowledgments
-Thanks for the great [PyTracking](https://github.com/visionml/pytracking) Library, which helps us to quickly implement our ideas.
 

@@ -7,13 +7,13 @@ from pytracking.libs.tensorlist import tensor_operation
 @tensor_operation
 def rfftshift2(a: torch.Tensor):
     h = a.shape[2] + 2
-    return torch.cat((a[:,:,(h-1)//2:,...], a[:,:,:h//2,...]), 2)
+    return torch.cat((a[:, :, (h - 1) // 2:, ...], a[:, :, :h // 2, ...]), 2)
 
 
 @tensor_operation
 def irfftshift2(a: torch.Tensor):
-    mid = int((a.shape[2]-1)/2)
-    return torch.cat((a[:,:,mid:,...], a[:,:,:mid,...]), 2)
+    mid = int((a.shape[2] - 1) / 2)
+    return torch.cat((a[:, :, mid:, ...], a[:, :, :mid, ...]), 2)
 
 
 @tensor_operation
@@ -23,20 +23,28 @@ def cfft2(a):
 
     return rfftshift2(torch.rfft(a, 2))
 
+    # new torch version # results not consistent
+    # a = torch.fft.fft2(a, dim=(-2, -1))
+    # return rfftshift2(torch.stack((a.real, a.imag), -1))
+
 
 @tensor_operation
 def cifft2(a, signal_sizes=None):
     """Do inverse FFT corresponding to cfft2."""
 
-    return torch.irfft(irfftshift2(a), 2, signal_sizes=signal_sizes)
+    return torch.irfft(irfftshift2(a), 2, signal_sizes=signal_sizes)  # old torch version
+
+    # new torch version
+    # a = irfftshift2(a)
+    # return torch.fft.irfft2(torch.complex(a[:, :, 0], a[:, :, 1]), s=signal_sizes, dim=(-2, -1))
 
 
 @tensor_operation
-def sample_fs(a: torch.Tensor, grid_sz: torch.Tensor = None, rescale = True):
+def sample_fs(a: torch.Tensor, grid_sz: torch.Tensor = None, rescale=True):
     """Samples the Fourier series."""
 
     # Size of the fourier series
-    sz = torch.Tensor([a.shape[2], 2*a.shape[3]-1]).float()
+    sz = torch.Tensor([a.shape[2], 2 * a.shape[3] - 1]).float()
 
     # Default grid
     if grid_sz is None or sz[0] == grid_sz[0] and sz[1] == grid_sz[1]:
@@ -51,21 +59,22 @@ def sample_fs(a: torch.Tensor, grid_sz: torch.Tensor = None, rescale = True):
     is_even = [s.item() % 2 == 0 for s in sz]
 
     # Compute paddings
-    pad_top = int((tot_pad[0]+1)/2) if is_even[0] else int(tot_pad[0]/2)
+    pad_top = int((tot_pad[0] + 1) / 2) if is_even[0] else int(tot_pad[0] / 2)
     pad_bottom = int(tot_pad[0] - pad_top)
-    pad_right = int((tot_pad[1]+1)/2)
+    pad_right = int((tot_pad[1] + 1) / 2)
 
     if rescale:
-        return grid_sz.prod().item() * cifft2(F.pad(a, (0, 0, 0, pad_right, pad_top, pad_bottom)), signal_sizes=grid_sz.long().tolist())
+        return grid_sz.prod().item() * cifft2(F.pad(a, (0, 0, 0, pad_right, pad_top, pad_bottom)),
+                                              signal_sizes=grid_sz.long().tolist())
     else:
         return cifft2(F.pad(a, (0, 0, 0, pad_right, pad_top, pad_bottom)), signal_sizes=grid_sz.long().tolist())
 
 
-def get_frequency_coord(sz, add_complex_dim = False, device='cpu'):
+def get_frequency_coord(sz, add_complex_dim=False, device='cpu'):
     """Frequency coordinates."""
 
-    ky = torch.arange(-int((sz[0]-1)/2), int(sz[0]/2+1), dtype=torch.float32, device=device).view(1,1,-1,1)
-    kx = torch.arange(0, int(sz[1]/2+1), dtype=torch.float32, device=device).view(1,1,1,-1)
+    ky = torch.arange(-int((sz[0] - 1) / 2), int(sz[0] / 2 + 1), dtype=torch.float32, device=device).view(1, 1, -1, 1)
+    kx = torch.arange(0, int(sz[1] / 2 + 1), dtype=torch.float32, device=device).view(1, 1, 1, -1)
 
     if add_complex_dim:
         ky = ky.unsqueeze(-1)
@@ -87,9 +96,9 @@ def shift_fs(a: torch.Tensor, shift: torch.Tensor):
     if shift[0] == 0 and shift[1] == 0:
         return a
 
-    ky, kx = get_frequency_coord((a.shape[2], 2*a.shape[3]-1), device=a.device)
+    ky, kx = get_frequency_coord((a.shape[2], 2 * a.shape[3] - 1), device=a.device)
 
-    return complex.mult(complex.mult(a, complex.exp_imag(shift[0].item()*ky)), complex.exp_imag(shift[1].item()*kx))
+    return complex.mult(complex.mult(a, complex.exp_imag(shift[0].item() * ky)), complex.exp_imag(shift[1].item() * kx))
 
 
 def sum_fs(a: TensorList) -> torch.Tensor:
@@ -144,3 +153,4 @@ def inner_prod_fs(a: torch.Tensor, b: torch.Tensor):
         return 2 * (a.reshape(-1) @ b.reshape(-1)) - a[:, :, :, 0].reshape(-1) @ b[:, :, :, 0].reshape(-1)
     else:
         raise NotImplementedError('Not implemented for mixed real and complex.')
+

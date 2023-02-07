@@ -8,7 +8,7 @@ import cv2 as cv
 from pytracking.utils.visdom import Visdom
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from pytracking.utils.plotting import draw_figure, overlay_mask, plot_scatter
+from pytracking.utils.plotting import draw_figure, overlay_mask
 from pytracking.utils.box_utils import convert_vot_anno_to_rect
 from ltr.data.bounding_box_utils import masks_to_bboxes
 from pytracking.evaluation.multi_object_wrapper import MultiObjectWrapper
@@ -195,6 +195,9 @@ class Tracker:
 
         _store_outputs(out, init_default)
 
+        # ###################################
+        # score_indexs = []
+        # ###################################
         for frame_num, frame_path in enumerate(seq.frames[1:], start=1):
             while True:
                 if not self.pause_mode:
@@ -204,7 +207,7 @@ class Tracker:
                     break
                 else:
                     time.sleep(0.1)
-            # print(frame_num)
+
             image = self._read_image(frame_path)
 
             start_time = time.time()
@@ -213,6 +216,8 @@ class Tracker:
             info['previous_output'] = prev_output
 
             out = tracker.track(image, info)
+
+            # score_indexs.append(out['score_index'])  # my add
 
             prev_output = OrderedDict(out)
             _store_outputs(out, {'time': time.time() - start_time})
@@ -223,9 +228,12 @@ class Tracker:
             elif tracker.params.visualization:
                 ################################################################
                 # my modify
-                self.visualize(image, out['target_bbox'], segmentation, gt_state=seq.ground_truth_rect[frame_num])
+                self.visualize(image, out['target_bbox'], segmentation, gt_state=seq.ground_truth_rect[frame_num], frame_num=frame_num)
                 # self.visualize(image, out['target_bbox'], segmentation)
                 ################################################################
+
+        # score_indexs = np.array(score_indexs).astype(float)
+        # np.savetxt('./', score_indexs, delimiter='\t', fmt='%f')
 
         for key in ['target_bbox', 'segmentation']:
             if key in output and len(output[key]) <= 1:
@@ -665,7 +673,7 @@ class Tracker:
         self.fig.canvas.mpl_connect('key_press_event', self.press)
         plt.tight_layout()
 
-    def visualize(self, image, state, segmentation=None, gt_state=None):
+    def visualize(self, image, state, segmentation=None, gt_state=None, frame_num=None):
         self.ax.cla()
         self.ax.imshow(image)
         if segmentation is not None:

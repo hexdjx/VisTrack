@@ -4,6 +4,7 @@ Utilities for bounding box manipulation.
 import torch
 import numpy as np
 import cv2
+import math
 
 
 def convert_vot_anno_to_rect(vot_anno, type):
@@ -35,8 +36,8 @@ def convert_vot_anno_to_rect(vot_anno, type):
         w = s * (x2 - x1) + 1
         h = s * (y2 - y1) + 1
 
-        x = cx - 0.5*w
-        y = cy - 0.5*h
+        x = cx - 0.5 * w
+        y = cy - 0.5 * h
         return [x, y, w, h]
     else:
         raise ValueError
@@ -64,6 +65,7 @@ def bbox_clip(x1, y1, x2, y2, boundary, min_sz=10):
     y2_new = max(min_sz, min(y2, boundary[0]))
     return x1_new, y1_new, x2_new, y2_new
 
+
 def mask_from_rect(rect, output_sz):
     """
     create a binary mask from a given rectangle
@@ -78,10 +80,11 @@ def mask_from_rect(rect, output_sz):
     mask[y0:y1, x0:x1] = 1
     return mask
 
+
 def rect_from_mask(mask):
     """
     create an axis-aligned rectangle from a given binary mask
-    mask in created as a minimal rectangle containing all non-zero pixels
+    in created as a minimal rectangle containing all non-zero pixels
     """
     x_ = np.sum(mask, axis=0)
     y_ = np.sum(mask, axis=1)
@@ -90,6 +93,7 @@ def rect_from_mask(mask):
     y0 = np.min(np.nonzero(y_))
     y1 = np.max(np.nonzero(y_))
     return [x0, y0, x1 - x0 + 1, y1 - y0 + 1]
+
 
 def masks_to_boxes(masks):
     """Compute the bounding boxes around the provided masks
@@ -161,3 +165,52 @@ def delta2bbox(delta):
     bbox_xywh = bbox_cxcywh.clone()
     bbox_xywh[:, :2] = bbox_cxcywh[:, :2] - 0.5 * bbox_cxcywh[:, 2:]
     return bbox_xywh
+
+
+'''把mask映射到原图上'''
+def map_mask_back(im, target_bb, search_area_factor, mask, mode=cv2.BORDER_REPLICATE):
+    """ Extracts a crop centered at target_bb box, of size search_area_factor times target_bb(Both height and width)
+
+    args:
+        im - cv image
+        target_bb - target box [x, y, w, h]
+        search_area_factor - Ratio of crop size to target size
+        output_sz - (float) Size to which the extracted crop is resized (always square). If None, no resizing is done.
+
+    returns:
+        cv image - extracted crop
+        float - the factor by which the crop has been resized to make the crop size equal output_size
+    """
+    H, W = (im.shape[0], im.shape[1])
+    base = np.zeros((H, W))
+    x, y, w, h = target_bb.tolist()
+
+    # Crop image
+    ws = math.ceil(search_area_factor * w)
+    hs = math.ceil(search_area_factor * h)
+
+    if ws < 1 or hs < 1:
+        raise Exception('Too small bounding box.')
+
+    x1 = round(x + 0.5 * w - ws * 0.5)
+    x2 = x1 + ws
+
+    y1 = round(y + 0.5 * h - hs * 0.5)
+    y2 = y1 + hs
+
+    x1_pad = max(0, -x1)
+    x2_pad = max(x2 - im.shape[1] + 1, 0)
+
+    y1_pad = max(0, -y1)
+    y2_pad = max(y2 - im.shape[0] + 1, 0)
+
+    '''pad base'''
+    base_padded = cv2.copyMakeBorder(base, y1_pad, y2_pad, x1_pad, x2_pad, mode)
+    '''Resize mask'''
+    mask_rsz = cv2.resize(mask, (ws, hs))
+    '''fill region with mask'''
+    base_padded[y1 + y1_pad:y2 + y1_pad, x1 + x1_pad:x2 + x1_pad] = mask_rsz.copy()
+    '''crop base_padded to get final mask'''
+    final_mask = base_padded[y1_pad:y1_pad + H, x1_pad:x1_pad + W]
+    assert (final_mask.shape == (H, W))
+    return final_mask

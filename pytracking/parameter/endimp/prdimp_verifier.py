@@ -41,21 +41,23 @@ def parameters():
     params.random_shift_factor = 1/3
 
     #############################################
-    # target embedding network
+    # my add
+    # verifier for the tracked target
     params.verifier_flag = True
-    params.verify_net = NetWithBackbone(net_path='Verify_Net.pth.tar', use_gpu=params.use_gpu)
+
     params.image_target_size = 8 * 16
-    params.normal_threshold = 0.8  # 0.85
-    params.hard_neg_threshold = 0.64  # 0.7
+    params.normal_threshold = 0.8
+    params.hard_neg_threshold = 0.7
 
     # adaptive threshold
-    params.adaptive_flag = True
-    params.beta = 0.8  # 0.94
+    params.adaptive_flag = False
+    params.beta = 0.8
     #############################################
 
     # Advanced localization parameters
-    params.advanced_localization = False  # disabled
-    params.target_not_found_threshold = 0.25
+    params.advanced_localization = False
+    params.score_preprocess = 'softmax'
+    params.target_not_found_threshold = 0.04
     params.distractor_threshold = 0.8
     params.hard_negative_threshold = 0.5
     params.target_neighborhood_scale = 2.2
@@ -64,9 +66,6 @@ def parameters():
     params.update_scale_when_uncertain = True
 
     # IoUnet parameters
-
-    params.use_iou_net = True               # Use IoU net or not
-
     params.box_refinement_space = 'relative'
     params.iounet_augmentation = False      # Use the augmented samples to compute the modulation vector
     params.iounet_k = 3                     # Top-k average to estimate final box
@@ -78,7 +77,7 @@ def parameters():
     params.box_refinement_step_length = 2.5e-3 # 1   # Gradient step length in the bounding box refinement
     params.box_refinement_step_decay = 1    # Multiplicative step length decay (1 means no decay)
 
-    params.net = NetWithBackbone(net_path='super_dimp.pth.tar',
+    params.net = NetWithBackbone(net_path='prdimp50.pth.tar',
                                  use_gpu=params.use_gpu)
 
     params.vot_anno_conversion_type = 'preserve_area'

@@ -83,6 +83,7 @@ class ResNet18m1(MultiFeatureBase):
         with torch.no_grad():
             return TensorList(self.net(im).values())
 
+
 class Mobilenet(MultiFeatureBase):
     """ResNet18 feature together with the VGG-m conv1 layer.
     args:
@@ -94,7 +95,7 @@ class Mobilenet(MultiFeatureBase):
     def __init__(self, output_layers, net_path=None, use_gpu=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for l in output_layers:
-            if l not in ['init_conv','layer1', 'layer2', 'layer3', 'layer4', 'layer5','layer6','layer_out']:
+            if l not in ['init_conv', 'layer1', 'layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer_out']:
                 raise ValueError('Unknown layer')
 
         self.output_layers = list(output_layers)
@@ -106,9 +107,10 @@ class Mobilenet(MultiFeatureBase):
         if isinstance(self.pool_stride, int) and self.pool_stride == 1:
             self.pool_stride = [1] * len(self.output_layers)
 
-        self.layer_stride = {'init_conv': 2, 'layer1': 2, 'layer2': 4, 'layer3': 8, 'layer4': 16, 'layer5': 16,'layer6': 32, 'layer_out': 32}
-        self.layer_dim = {'init_conv': 16, 'layer1': 16, 'layer2': 24, 'layer3': 40, 'layer4': 80, 'layer5': 112,'layer6': 160, 'layer_out': 960}
-
+        self.layer_stride = {'init_conv': 2, 'layer1': 2, 'layer2': 4, 'layer3': 8, 'layer4': 16, 'layer5': 16,
+                             'layer6': 32, 'layer_out': 32}
+        self.layer_dim = {'init_conv': 16, 'layer1': 16, 'layer2': 24, 'layer3': 40, 'layer4': 80, 'layer5': 112,
+                          'layer6': 160, 'layer_out': 960}
 
         self.mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, -1, 1, 1)
         self.std = torch.Tensor([0.229, 0.224, 0.225]).view(1, -1, 1, 1)
@@ -151,6 +153,7 @@ class Mobilenet(MultiFeatureBase):
 
         with torch.no_grad():
             return TensorList(self.net(im).values())
+
 
 class ATOMResNet18(MultiFeatureBase):
     """ResNet18 feature with the ATOM IoUNet.
@@ -223,3 +226,77 @@ class ATOMResNet18(MultiFeatureBase):
             return TensorList([output_features[0]])
         else:
             return TensorList([output_features[layer] for layer in self.output_layers])
+
+
+#############################################
+class SEResNet18(MultiFeatureBase):
+    """ResNet18 feature with the ATOM IoUNet.
+    args:
+        output_layers: List of layers to output.
+        net_path: Relative or absolute net path (default should be fine).
+        use_gpu: Use GPU or CPU.
+    """
+
+    def __init__(self, output_layers=('layer3',), net_path='SEc', SE_branch='corner', use_gpu=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.output_layers = list(output_layers)
+        self.use_gpu = use_gpu
+        self.net_path = net_path
+        self.SE_branch = SE_branch
+
+    def initialize(self):
+        self.net = load_network(self.net_path)
+
+        if self.use_gpu:
+            self.net.cuda()
+        self.net.eval()
+
+        self.corr = self.net.corr
+
+        if self.SE_branch == 'corner':
+            self.corner_head = self.net.corner_head
+
+        if self.SE_branch == 'mask':
+            self.mask_head = self.net.mask_head
+            self.feat_adjust = self.net.feat_adjust
+
+        self.layer_stride = {'conv1': 2, 'layer1': 4, 'layer2': 8, 'layer3': 16, 'layer4': 32, 'classification': 16,
+                             'fc': None}
+        self.layer_dim = {'conv1': 64, 'layer1': 64, 'layer2': 128, 'layer3': 256, 'layer4': 512, 'classification': 256,
+                          'fc': None}
+
+        if isinstance(self.pool_stride, int) and self.pool_stride == 1:
+            self.pool_stride = [1] * len(self.output_layers)
+
+        self.feature_layers = sorted(list(self.output_layers))
+
+        self.mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, -1, 1, 1)
+        self.std = torch.Tensor([0.229, 0.224, 0.225]).view(1, -1, 1, 1)
+
+    def dim(self):
+        return TensorList([self.layer_dim[l] for l in self.output_layers])
+
+    def stride(self):
+        return TensorList([s * self.layer_stride[l] for l, s in zip(self.output_layers, self.pool_stride)])
+
+    def extract(self, im: torch.Tensor):
+        im = im / 255
+        im -= self.mean
+        im /= self.std
+
+        if self.use_gpu:
+            im = im.cuda()
+
+        with torch.no_grad():
+            if self.SE_branch == 'corner':
+                output_features = self.net.extract_backbone_features(im, self.feature_layers)
+                return TensorList([output_features[layer] for layer in self.output_layers]), None
+
+            if self.SE_branch == 'mask':
+
+                output_features = self.net.extract_backbone_features(im,  layers=['conv1', 'layer1', 'layer2', 'layer3'])
+                # Save low-level feature list
+                Lfeat_list = [feat for name, feat in output_features.items() if name != 'layer3']
+                return TensorList([output_features[layer] for layer in self.output_layers]), Lfeat_list
+#############################################

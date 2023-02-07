@@ -12,8 +12,6 @@ from .optim import ConvProblem, FactorizedConvProblem
 from pytracking.features import augmentation
 import ltr.data.bounding_box_utils as bbutils
 
-from ltr.models.utils import get_target_probability
-from pytracking.features.preprocessing import sample_patch
 
 class ATOM(BaseTracker):
     multiobj_mode = 'parallel'
@@ -110,11 +108,6 @@ class ATOM(BaseTracker):
         self.image_sz = torch.Tensor([im.shape[2], im.shape[3]])
         self.min_scale_factor = torch.max(10 / self.base_target_sz)
         self.max_scale_factor = torch.min(self.image_sz / self.base_target_sz)
-
-        # get target p
-        # im_patch, patch_coord = sample_patch(im, self.pos, self.target_scale * self.img_sample_sz, self.img_sample_sz)
-        #
-        # get_target_probability(im_patch, self.base_target_sz)
 
         # Extract and transform sample
         x = self.generate_init_samples(im)

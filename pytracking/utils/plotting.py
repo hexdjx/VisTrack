@@ -6,6 +6,7 @@ import cv2
 from mpl_toolkits.mplot3d import Axes3D
 from pytracking.features.preprocessing import torch_to_numpy
 
+
 def draw_figure(fig):
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -31,7 +32,6 @@ def show_tensor(a: torch.Tensor, fig_num=None, title=None, range=(None, None), a
         plt.axis('equal')
         if title is not None:
             plt.title(title)
-
         draw_figure(fig)
     else:
         ax.cla()
@@ -156,9 +156,11 @@ def overlay_mask(im, ann, alpha=0.5, colors=None, contour_thickness=None):
                              contour_thickness)
     return img
 
+
 #########################################################################################
-# my add
-# visualize respond map in 3D
+# @auther Xuedong He
+
+# Visualizing respond map in 3D
 def mesh_score(s, fig_num=None, frame_num=None):
     score = s.squeeze().cpu().clone().detach().numpy()
 
@@ -181,21 +183,6 @@ def mesh_score(s, fig_num=None, frame_num=None):
                 .format(frame_num), format='png', dpi=300)
 
 
-def plot_scatter(psr, apce, psmd, det):
-    x_frame = [i + 1 for i in range(len(psr))]
-    plt.plot(x_frame, psr, color='red', linewidth=2.0, linestyle='-')
-    plt.plot(x_frame, apce, color='green', linewidth=2.0, linestyle='--')
-    plt.plot(x_frame, psmd, color='blue', linewidth=2.0, linestyle='-.')
-    # plt.plot(x_frame, det, color='black', linewidth=2.0, linestyle=':')
-
-    plt.title('Score index', fontsize=24)
-    plt.xlabel('video frame')
-    plt.ylabel('score index')
-
-    # 保存图片到本地
-    # plt.savefig('scale_precision.png', dpi=300, bbox_inches='tight')
-    plt.show()
-
 def im_show(im, name):
     im_patch = torch_to_numpy(im)
 
@@ -209,9 +196,39 @@ def im_show(im, name):
     # plt.savefig('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name),
     #             format='png', dpi=300)
 
+
 def im_save(im, name):
     im_patch = torch_to_numpy(im)
     from PIL import Image
     img = Image.fromarray(np.uint8(im_patch))
     img.save('/home/hexdjx/code/Tracking/pytracking/pytracking/results/img/{}.png'.format(name))
+
+
+# score index scatter plot
+def plot_scatter(psr, apce, psme):
+    x_frame = [i + 200 for i in range(len(psr))]
+    # x_ticks = np.arange(200, 401, 5)
+    # plt.xticks(x_ticks)
+    plt.plot(x_frame, psr, color='blue', linewidth=1.0, linestyle='-')
+    plt.plot(x_frame, apce, color='green', linewidth=1.0, linestyle='--')
+    plt.plot(x_frame, psme, color='red', linewidth=1.0, linestyle='-.')
+
+    # plt.title('Score Index', fontsize=24)
+    # plt.xlabel('video frame')
+    # plt.ylabel('score index')
+
+    # 保存图片到本地
+    # plt.savefig('scale_precision.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+
+if __name__ == '__main__':
+    # fudimp
+    base_path = 'D:/Tracking/VisTrack/pytracking/analysis/utils/results/'
+    score_index = np.loadtxt(base_path + 'score_index.txt')
+    psr = score_index[200:400, 0]
+    apce = score_index[200:400, 1]
+    psme = score_index[200:400, 2]
+    plot_scatter(psr, apce, psme)
 #########################################################################################
+

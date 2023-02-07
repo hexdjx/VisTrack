@@ -22,7 +22,7 @@ def sample_patch_transformed(im, pos, scale, image_sz, transforms, is_mask=False
         transforms: A set of image transforms to apply.
     """
 
-    # Get image patche
+    # Get image patches
     im_patch, _ = sample_patch(im, pos, scale * image_sz, image_sz, is_mask=is_mask)
 
     # Apply transforms
@@ -30,6 +30,25 @@ def sample_patch_transformed(im, pos, scale, image_sz, transforms, is_mask=False
 
     return im_patches
 
+
+# --my add-- ##########################################################################
+def patch_prob_transformed(im_patch, target_prob, transforms, is_mask=False):
+    """Extract transformed image samples.
+    args:
+        im: Image.
+        pos: Center position for extraction.
+        scale: Image scale to extract features from.
+        image_sz: Size to resize the image samples to before extraction.
+        transforms: A set of image transforms to apply.
+    """
+    # Apply transforms
+    im_patches = torch.cat([T(im_patch, is_mask=is_mask) for T in transforms])
+    target_probs = torch.cat([T(target_prob, is_mask=is_mask) for T in transforms])
+
+    return im_patches, target_probs
+
+
+#######################################################################################
 
 def sample_patch(im: torch.Tensor, pos: torch.Tensor, sample_sz: torch.Tensor, output_sz: torch.Tensor = None,
                  mode: str = 'replicate', max_scale_change=None, is_mask=False):
@@ -181,4 +200,5 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
         im_patch = F.interpolate(im_patch, output_sz.long().tolist(), mode='nearest')
 
     return im_patch, patch_coord
+
 ############################################################

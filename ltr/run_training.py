@@ -6,6 +6,8 @@ import multiprocessing
 import cv2 as cv
 import torch.backends.cudnn
 
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:
     sys.path.append(env_path)
@@ -41,8 +43,8 @@ def run_training(train_module, train_name, cudnn_benchmark=True):
 
 def main():
     parser = argparse.ArgumentParser(description='Run a train scripts in train_settings.')
-    parser.add_argument('--train_module', type=str, default='verifynet', help='Name of module in the "train_settings/" folder.')  # bbreg Verification
-    parser.add_argument('--train_name', type=str, default='verifynet_gauss', help='Name of the train settings file.')  # atom verification
+    parser.add_argument('--train_module', type=str, default='dimp', help='Name of module in the "train_settings/" folder.')  # bbreg Verification
+    parser.add_argument('--train_name', type=str, default='endimp', help='Name of the train settings file.')  # atom verification
     parser.add_argument('--cudnn_benchmark', type=bool, default=True, help='Set cudnn benchmark on (1) or off (0) (default is on).')
 
     args = parser.parse_args()

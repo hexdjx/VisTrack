@@ -1,6 +1,9 @@
 import os
 import sys
 import argparse
+import matplotlib.pyplot as plt
+
+plt.rcParams['figure.figsize'] = [7, 4]
 
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:
@@ -39,8 +42,8 @@ def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', se
 
 def main():
     parser = argparse.ArgumentParser(description='Run tracker on sequence or dataset.')
-    parser.add_argument('--tracker_name', type=str, default='rvt', help='Name of tracking method.')
-    parser.add_argument('--tracker_param', type=str, default='rvt', help='Name of parameter file.')
+    parser.add_argument('--tracker_name', type=str, default='atom', help='Name of tracking method.')
+    parser.add_argument('--tracker_param', type=str, default='default', help='Name of parameter file.')
     parser.add_argument('--runid', type=int, default=None, help='The run id.')
     parser.add_argument('--dataset_name', type=str, default='otb',
                         help='Name of dataset (otb, nfs, uav, tpl, tpl_nootb, vot, got10k_ltrval, got10k_val, lasot).')

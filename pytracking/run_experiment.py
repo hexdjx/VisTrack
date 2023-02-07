@@ -3,6 +3,8 @@ import sys
 import argparse
 import importlib
 
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:
     sys.path.append(env_path)
@@ -27,9 +29,9 @@ def run_experiment(experiment_module: str, experiment_name: str, debug=0, thread
 
 def main():
     parser = argparse.ArgumentParser(description='Run tracker.')
-    parser.add_argument('--experiment_module', type=str, default='myexperiment',
+    parser.add_argument('--experiment_module', type=str, default='myexperiments',
                         help='Name of experiment module in the experiments/ folder.')
-    parser.add_argument('--experiment_name', type=str, default='rvt_test', help='Name of the experiment function.')
+    parser.add_argument('--experiment_name', type=str, default='endimp_test', help='Name of the experiment function.')
     parser.add_argument('--debug', type=int, default=0, help='Debug level.')
     parser.add_argument('--threads', type=int, default=0, help='Number of threads.')
 

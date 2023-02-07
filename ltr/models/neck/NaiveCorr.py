@@ -1,6 +1,9 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
-from ltr.models.neck.utils import *
+from ltr.models.utils import SE_Block, NonLocal_Block, conv_bn_relu
 
 def naive_corr(x, kernel):
     """group conv2d to calculate cross neck, fast version
@@ -41,11 +44,11 @@ class NaiveCorr(nn.Module):
                 nn.BatchNorm2d(64),
                 nn.ReLU(),
             )
-        self.channel_attention = SEModule(num_corr_channel, reduction=4)
-        self.adjust_layer = conv(1024, 64)
+        self.channel_attention = SE_Block(num_corr_channel, reduction=4)
+        self.adjust_layer = conv_bn_relu(1024, 64)
         self.use_NL = use_NL
         if self.use_NL is True:
-            self.spatial_attention = NONLocalBlock(in_channels=num_corr_channel)
+            self.spatial_attention = NonLocal_Block(in_channels=num_corr_channel)
 
     def forward(self, feat1, feat2, bb1):
         """Runs the ATOM IoUNet during training operation.

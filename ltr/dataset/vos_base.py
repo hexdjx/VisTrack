@@ -397,8 +397,4 @@ class VOSDatasetBase(BaseVideoDataset):
     def has_segmentation_info(self):
         return True
 
-    '''newly added'''
-    def has_mask(self):
-        """数据集是否提供mask-level的标签"""
-        return True
 

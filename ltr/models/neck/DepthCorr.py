@@ -1,6 +1,10 @@
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
-from ltr.models.neck.utils import *
+from ltr.models.utils import SE_Block, NonLocal_Block, conv_bn_relu
 
 
 def depth_corr(x, kernel):
@@ -15,7 +19,7 @@ def depth_corr(x, kernel):
     return out
 
 
-class Depth_Corr(nn.Module):
+class DepthCorr(nn.Module):
     """Network module for IoU prediction. Refer to the ATOM paper for an illustration of the architecture.
     It uses two backbone feature layers as input.
     args:
@@ -32,8 +36,8 @@ class Depth_Corr(nn.Module):
         self.prroi_pool = PrRoIPool2D(pool_size, pool_size, 1 / 16)
         num_corr_channel = pool_size * pool_size
         '''newly added'''
-        self.adjust_layer = conv(1024, 64)
-        self.channel_attention = SEModule(num_corr_channel, reduction=4)
+        self.adjust_layer = conv_bn_relu(1024, 64)
+        self.channel_attention = SE_Block(num_corr_channel, reduction=4)
         self.use_post_corr = use_post_corr
         if use_post_corr:
             self.post_corr = nn.Sequential(
@@ -49,7 +53,7 @@ class Depth_Corr(nn.Module):
             )
         self.use_NL = use_NL
         if self.use_NL is True:
-            self.spatial_attention = NONLocalBlock(in_channels=num_corr_channel)
+            self.spatial_attention = NonLocal_Block(in_channels=num_corr_channel)
 
     def forward(self, feat1, feat2, bb1):
 

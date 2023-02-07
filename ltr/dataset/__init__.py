@@ -5,4 +5,3 @@ from .coco import MSCOCO
 from .coco_seq import MSCOCOSeq
 from .youtubevos import YouTubeVOS
 from .davis import Davis
-from .lasot_candidate_matching import LasotCandidateMatching

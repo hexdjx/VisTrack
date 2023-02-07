@@ -1,5 +1,6 @@
 from . import BaseActor
 
+
 class VerifyActor(BaseActor):
     def __call__(self, data):
 
@@ -20,6 +21,7 @@ class VerifyActor(BaseActor):
 
         # Return training stats
         stats = {'Loss/total': loss.item(),
-                 'Loss/tri_loss': loss.item()}
+                 'Loss/tri1_loss': loss1.item(),
+                 'Loss/tri2_loss': loss2.item()}
 
         return loss, stats

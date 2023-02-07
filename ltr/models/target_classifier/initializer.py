@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-import torch.nn.functional as F
 from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
 from ltr.models.layers.blocks import conv_block
 import math
@@ -15,7 +14,7 @@ class FilterPool(nn.Module):
 
     def __init__(self, filter_size=1, feature_stride=16, pool_square=False):
         super().__init__()
-        self.prroi_pool = PrRoIPool2D(filter_size, filter_size, 1/feature_stride)
+        self.prroi_pool = PrRoIPool2D(filter_size, filter_size, 1 / feature_stride)
         self.pool_square = pool_square
 
     def forward(self, feat, bb):
@@ -27,7 +26,7 @@ class FilterPool(nn.Module):
             pooled_feat:  Pooled features. Dims (num_samples, feat_dim, wH, wW)."""
 
         # Add batch_index to rois
-        bb = bb.reshape(-1,4)
+        bb = bb.reshape(-1, 4)
         num_images_total = bb.shape[0]
         batch_index = torch.arange(num_images_total, dtype=torch.float32).reshape(-1, 1).to(bb.device)
 
@@ -36,7 +35,7 @@ class FilterPool(nn.Module):
 
         if self.pool_square:
             bb_sz = pool_bb[:, 2:4].prod(dim=1, keepdim=True).sqrt()
-            pool_bb[:, :2] += pool_bb[:, 2:]/2 - bb_sz/2
+            pool_bb[:, :2] += pool_bb[:, 2:] / 2 - bb_sz / 2
             pool_bb[:, 2:] = bb_sz
 
         pool_bb[:, 2:4] = pool_bb[:, 0:2] + pool_bb[:, 2:4]
@@ -87,7 +86,6 @@ class FilterInitializer(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
     def forward(self, feat, bb):
         """Runs the initializer module.
         Note that [] denotes an optional dimension.
@@ -106,7 +104,8 @@ class FilterInitializer(nn.Module):
         weights = self.filter_post_layers(feat_post)
 
         if num_images > 1:
-            weights = torch.mean(weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
+            weights = torch.mean(
+                weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
 
         if self.filter_norm:
             weights = weights / (weights.shape[1] * weights.shape[2] * weights.shape[3])
@@ -146,7 +145,6 @@ class FilterInitializerLinear(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
     def forward(self, feat, bb):
         """Runs the initializer module.
         Note that [] denotes an optional dimension.
@@ -164,7 +162,8 @@ class FilterInitializerLinear(nn.Module):
 
         # If multiple input images, compute the initial filter as the average filter.
         if num_images > 1:
-            weights = torch.mean(weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
+            weights = torch.mean(
+                weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
 
         if self.filter_norm:
             weights = weights / (weights.shape[1] * weights.shape[2] * weights.shape[3])
@@ -222,7 +221,6 @@ class FilterInitializerSiamese(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-
     def forward(self, feat, bb):
         """Runs the initializer module.
         Note that [] denotes an optional dimension.
@@ -238,7 +236,8 @@ class FilterInitializerSiamese(nn.Module):
         weights = self.filter_pool(feat, bb)
 
         if num_images > 1:
-            weights = torch.mean(weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
+            weights = torch.mean(
+                weights.reshape(num_images, -1, weights.shape[-3], weights.shape[-2], weights.shape[-1]), dim=0)
 
         if self.filter_norm:
             weights = weights / (weights.shape[1] * weights.shape[2] * weights.shape[3])

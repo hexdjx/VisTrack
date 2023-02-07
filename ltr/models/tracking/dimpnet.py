@@ -1,5 +1,4 @@
 import math
-import torch
 import torch.nn as nn
 from collections import OrderedDict
 from ltr.models.meta import steepestdescent
@@ -22,15 +21,15 @@ class DiMPnet(nn.Module):
         classification_layer:  Name of the backbone feature layer to use for classification.
         bb_regressor_layer:  Names of the backbone layers to use for bounding box regression."""
 
-    ####################################
+    # --oupt-- ###################################
     # for OUPT use
     # def __init__(self, feature_extractor, classifier, bb_regressor, classification_layer, bb_regressor_layer,
     #              target_feat_layer=None):
-    #######################################
+    #############################################
     def __init__(self, feature_extractor, classifier, bb_regressor, classification_layer, bb_regressor_layer):
         super().__init__()
 
-        ##################################
+        # --oupt-- #################################
         # if target_feat_layer is None:
         #     target_feat_layer = ['layer1', 'layer2', 'layer3', 'layer4']
         #######################################
@@ -40,7 +39,7 @@ class DiMPnet(nn.Module):
         self.classification_layer = [classification_layer] if isinstance(classification_layer,
                                                                          str) else classification_layer
         self.bb_regressor_layer = bb_regressor_layer
-        #####################################
+        # --oupt-- ####################################
         # self.target_feat_layer = target_feat_layer
         # self.output_layers = sorted(list(set(self.classification_layer + self.bb_regressor_layer + self.target_feat_layer)))
         #####################################

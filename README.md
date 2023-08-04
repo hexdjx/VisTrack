@@ -4,7 +4,7 @@ This repository records the proposed visual tracking methods based on [PyTrackin
 Here is a list of the improved trackers.
 
 [Raw tracking results and trained models](https://drive.google.com/drive/folders/182NbsBrVR9PICR9aSkb2IhUDvrlSsTDT?usp=sharing)
-* FuDiMP: Attention Fusion and Target-Uncertain Detection for Discriminative Tracking, Knowledge-Based Systems, 2023. 
+* FuDiMP: Attention Fusion and Target-Uncertain Detection for Discriminative Tracking, Knowledge-Based Systems, 2023. [[Paper]](https://doi.org/10.1016/j.knosys.2023.110860)
 * EnDiMP: Enhancing Discriminative Appearance Model for Visual Tracking, Expert Systems With Applications, 2023. [[Paper]](https://doi.org/10.1016/j.eswa.2023.119670)
 * RVT: Exploring Reliable Visual Tracking via Target Embedding Network, Knowledge-Based Systems, 2022. [[Paper]](https://doi.org/10.1016/j.knosys.2022.108584)  
 * OUPT: Learning Object-Uncertainty Policy for Visual Tracking, Information Sciences, 2022. [[Paper]](https://doi.org/10.1016/j.ins.2021.09.002)

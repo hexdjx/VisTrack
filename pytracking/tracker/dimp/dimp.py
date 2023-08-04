@@ -23,13 +23,12 @@ class DiMP(BaseTracker):
 
     def initialize(self, image, info: dict) -> dict:
         # Initialize some stuff
-        self.frame_num = 1
-        if not self.params.has('device'):
-            self.params.device = 'cuda' if self.params.use_gpu else 'cpu'
 
         # Initialize network
         self.initialize_features()
-
+        self.frame_num = 1
+        if not self.params.has('device'):
+            self.params.device = 'cuda' if self.params.use_gpu else 'cpu'
         # The DiMP network
         self.net = self.params.net
 

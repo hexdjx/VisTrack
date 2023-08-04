@@ -48,7 +48,7 @@ def merge_multiple_runs(eval_data):
     ave_success_rate_plot_center_merged = []
     ave_success_rate_plot_center_norm_merged = []
     avg_overlap_all_merged = []
-    ave_fps_merged = []
+    # ave_fps_merged = []
 
     ave_success_rate_plot_overlap = torch.tensor(eval_data['ave_success_rate_plot_overlap'])
     ave_success_rate_plot_center = torch.tensor(eval_data['ave_success_rate_plot_center'])
@@ -485,5 +485,5 @@ def print_per_sequence_results(trackers, dataset, report_name, merge_results=Fal
     scores_per_tracker = {k: avg_overlap_all[:, i] for i, k in enumerate(tracker_disp_names)}
     report_text = generate_formatted_report(sequence_names, scores_per_tracker)
 
-    print(eval_data['ave_fps_merged'])
+    # print(eval_data['ave_fps_merged'])
     print(report_text)

@@ -13,17 +13,19 @@ from pytracking.pysot_toolkit.toolkit.datasets import OTBDataset, UAVDataset, La
 from pytracking.pysot_toolkit.toolkit.evaluation import OPEBenchmark, AccuracyRobustnessBenchmark, EAOBenchmark, F1Benchmark
 from pytracking.pysot_toolkit.toolkit.visualization import draw_success_precision
 import numpy as np
+from pytracking.evaluation.environment import env_settings
+
 
 parser = argparse.ArgumentParser(description='tracking evaluation')
 parser.add_argument('--tracker_path', '-p', type=str,
-                    default='/home/hexd6/code/Tracking/VisTrack/pytracking/results/',
+                    default=env_settings().base_result_path,
                     help='tracker result path')
 parser.add_argument('--dataset', '-d', type=str, default='VOT2018',
                     help='dataset name')
 parser.add_argument('--num', '-n', default=1, type=int,
                     help='number of thread to eval')
-parser.add_argument('--tracker_prefix', '-t', default='SuperDiMP',
-                    type=str, help='tracker name')
+parser.add_argument('--tracker_name', default='OUPT', type=str,
+                    help='name of tracker for pytracking tracker'),
 parser.add_argument('--show_video_level', '-s', dest='show_video_level',
                     action='store_true')
 parser.add_argument('--vis', dest='vis', action='store_false')
@@ -33,17 +35,17 @@ args = parser.parse_args()
 
 def main():
     tracker_dir = os.path.join(args.tracker_path, args.dataset)
+
     trackers = glob(os.path.join(args.tracker_path,
                                  args.dataset,
-                                 args.tracker_prefix + '*'))
+                                 args.tracker_name + '*'))
     trackers = [x.split('/')[-1] for x in trackers]
 
     assert len(trackers) > 0
     args.num = min(args.num, len(trackers))
 
-    root = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/VOT'
 
-    root = os.path.join(root, args.dataset)
+    root = os.path.join(env_settings().dataset_path, args.dataset)
     if 'OTB' in args.dataset:
         dataset = OTBDataset(args.dataset, root)
         dataset.set_tracker(tracker_dir, trackers)

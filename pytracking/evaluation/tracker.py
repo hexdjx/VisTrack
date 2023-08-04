@@ -231,7 +231,9 @@ class Tracker:
                 self.visualize(image, out['target_bbox'], segmentation, gt_state=seq.ground_truth_rect[frame_num], frame_num=frame_num)
                 # self.visualize(image, out['target_bbox'], segmentation)
                 ################################################################
-
+        # import tensorflow as tf
+        # tracker.sess.close()
+        # tf.reset_default_graph()
         # score_indexs = np.array(score_indexs).astype(float)
         # np.savetxt('./', score_indexs, delimiter='\t', fmt='%f')
 

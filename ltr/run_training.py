@@ -6,7 +6,6 @@ import multiprocessing
 import cv2 as cv
 import torch.backends.cudnn
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:

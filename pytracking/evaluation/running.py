@@ -6,8 +6,10 @@ from itertools import product
 from collections import OrderedDict
 from pytracking.evaluation import Sequence, Tracker
 from ltr.data.image_loader import imwrite_indexed
+from pytracking.utils.box_utils import convert_vot_anno_to_rect
 
 import matplotlib.pyplot as plt
+
 
 # from pytracking.vot_utils.region import vot_float2str
 
@@ -122,18 +124,22 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
             print(e)
             return
 
-##################################################
+    ##################################################
     # my add
     # plot precision
     def _show_precision(positions, ground_truth, title, max_threshold=50):
         assert positions.shape == ground_truth.shape
+
+        ground_truth = np.array([convert_vot_anno_to_rect(g) for g in ground_truth])
+        positions = np.array([convert_vot_anno_to_rect(p) for p in positions])
+
         distances = np.sqrt(np.square(positions[:, :2] - ground_truth[:, :2]).sum(axis=1))
 
         precisions = np.zeros([max_threshold, 1])
         for p in range(1, max_threshold + 1):
             precisions[p - 1] = sum(distances < p) / len(distances)
             if p == 20:
-                print('precision threshold 20 pix is %.3f' % precisions[p-1])
+                print('precision threshold 20 pix is %.3f' % precisions[p - 1])
         # plt.figure()
         # plt.title('Precisions - ' + title)
         # plt.plot(precisions, 'r-', linewidth=2)
@@ -144,6 +150,10 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
     # plot AUC
     def _show_success(pred_bb, ground_truth, title, max_threshold=1):
         assert pred_bb.shape == ground_truth.shape
+
+        ground_truth = np.array([convert_vot_anno_to_rect(g) for g in ground_truth])
+        pred_bb = np.array([convert_vot_anno_to_rect(p) for p in pred_bb])
+
         tl = np.maximum(pred_bb[:, :2], ground_truth[:, :2])
         br = np.minimum(pred_bb[:, :2] + pred_bb[:, 2:] - 1.0, ground_truth[:, :2] + ground_truth[:, 2:] - 1.0)
         sz = np.maximum(br - tl + 1.0, 0)
@@ -155,7 +165,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
 
         success = np.zeros([100, 1])
         for p in range(1, 101):
-            success[p - 1] = sum(IOU > p*0.01) / len(IOU)
+            success[p - 1] = sum(IOU > p * 0.01) / len(IOU)
             if p == 50:
                 print('success threshold 0.5 is %.3f' % success[p - 1])
         # plt.figure()
@@ -170,7 +180,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
         _show_precision(predict_bb, seq.ground_truth_rect, seq.name)
         _show_success(predict_bb, seq.ground_truth_rect, seq.name)
 
-##################################################
+    ##################################################
 
     sys.stdout.flush()
 

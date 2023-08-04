@@ -5,6 +5,46 @@ import numpy as np
 from pytracking.evaluation import get_dataset
 
 
+# color attention tracking
+def plot_ctp(base_path):
+    # green yellow red  # B G R
+    _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
+
+    SuperDiMP = base_path + 'dimp/super_dimp'
+
+    CTP = base_path + 'ctp/ctp_update'
+
+    dataset = get_dataset('otb')
+
+    sequence = ['Bolt', 'Human3', 'Skating2_1', 'Skating2_2']  # 'CarDark', 'Crowds'
+    dataset = [dataset[s] for s in sequence]
+
+    for seq in dataset:
+        gt = seq.ground_truth_rect
+        SuperDiMP_file = '{}/{}.txt'.format(SuperDiMP, seq.name)
+        CTP_file = '{}/{}.txt'.format(CTP, seq.name)
+
+        SuperDiMP_bb = np.loadtxt(SuperDiMP_file)
+        CTP_bb = np.loadtxt(CTP_file)
+
+        output_path = os.path.join(os.path.dirname(__file__), 'results/ctp/img/{}/'.format(seq.name))
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        for frame_num, frame_path in enumerate(seq.frames):
+            im = cv.imread(seq.frames[frame_num])
+
+            pred_bb = [gt[frame_num], SuperDiMP_bb[frame_num], CTP_bb[frame_num]]
+            for i, s in enumerate(pred_bb, start=1):
+                pred_s = s
+                tl = tuple(map(int, [pred_s[0], pred_s[1]]))
+                br = tuple(map(int, [pred_s[0] + pred_s[2], pred_s[1] + pred_s[3]]))
+                col = _tracker_disp_colors[i]
+                cv.rectangle(im, tl, br, col, 2)
+
+            cv.imwrite('{}/{}.jpg'.format(output_path, frame_num + 1), im)
+
+
 # fusion based SuperDiMP
 def plot_fudimp(base_path):
     # green yellow purple blue red  # B G R
@@ -258,4 +298,6 @@ if __name__ == "__main__":
     # plot_rvt(base_path)
     # plot_endimp(base_path)
     plot_fudimp(base_path)
+    # plot_ctp(base_path)
+
     print('done!')

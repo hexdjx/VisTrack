@@ -3,6 +3,88 @@ from pytracking.evaluation import get_dataset, trackerlist
 
 # @author Xuedong He
 
+# --CTP-- ######################################################################
+def ctp_test():
+
+    # ablation analysis
+
+    # Color target probability
+    # trackers = trackerlist('ctp', 'default_no')  # no mlp
+    # trackers = trackerlist('ctp', 'default')
+    # trackers = trackerlist('ctp', 'default_64')
+    # trackers = trackerlist('ctp', 'default_mean')
+
+    # trackers = trackerlist('ctp', 'default_init_prob') + \
+    #            trackerlist('ctp', 'default_update_prob') + \
+    #            trackerlist('ctp', 'default_replace_prob')
+
+    # score matching
+    # trackers = trackerlist('ctp', 'default_match') + \
+    #            trackerlist('ctp', 'default_match_replace') + \
+    #            trackerlist('ctp', 'default_prob_match')
+
+
+    # dataset = get_dataset('otb', 'nfs', 'lasot')
+    # dataset = get_dataset('nfs')
+    # dataset = get_dataset('lasot')
+
+    trackers = trackerlist('keep_track_c', 'default')
+
+    # trackerlist('ctp', 'default_prob_match')
+    dataset = get_dataset('otb', 'nfs', 'uav')
+    # dataset = get_dataset('trackingnet')
+
+    # test got-10k
+    # trackers = trackerlist('ctp', 'default_update', range(3)) #+ \
+    # trackers = trackerlist('keep_track_c', 'default', range(3))# + \
+
+    # dataset = get_dataset('got10k_test')
+
+    return trackers, dataset
+
+
+# --FuDiMP-- ######################################################################
+def fudimp_test():
+    # various feature fusion
+    trackers = trackerlist('fudimp', 'fudimp_awff_att') + \
+               trackerlist('fudimp', 'fudimp_awff') + \
+               trackerlist('fudimp', 'fudimp_ff')
+
+    # additional score index
+    # trackers = trackerlist('fudimp', 'super_dimp_apce') + \
+    #            trackerlist('fudimp', 'fudimp_apce')
+
+    # trackers = trackerlist('fudimp', 'dimp50_psr05') + \
+    #            trackerlist('fudimp', 'dimp50_psr06') + \
+    #            trackerlist('fudimp', 'dimp50_psr07') + \
+    #            trackerlist('fudimp', 'dimp50_psr08') + \
+    #            trackerlist('fudimp', 'dimp50_apce05') + \
+    #            trackerlist('fudimp', 'dimp50_apce06') + \
+    #            trackerlist('fudimp', 'dimp50_apce07') + \
+    #            trackerlist('fudimp', 'dimp50_apce08') + \
+    #            trackerlist('fudimp', 'dimp50_psme05') + \
+    #            trackerlist('fudimp', 'dimp50_psme06') + \
+    #            trackerlist('fudimp', 'dimp50_psme07') + \
+    #            trackerlist('fudimp', 'dimp50_psme08')
+
+    # trackers = trackerlist('fudimp', 'fudimp_psme') + \
+    #            trackerlist('fudimp', 'fudimp_apce') + \
+    #            trackerlist('fudimp', 'fudimp_psr')
+
+    # trackers = trackerlist('fudimp', 'super_dimp_psme') + \
+    #            trackerlist('fudimp', 'super_dimp_apce') + \
+    #            trackerlist('fudimp', 'super_dimp_psr')
+
+    dataset = get_dataset('otb', 'nfs', 'uav', 'lasot')
+
+    # trackers = trackerlist('fudimp_mu', 'default')
+    # dataset = get_dataset('lasot')
+
+    # dataset = get_dataset('trackingnet')
+
+    return trackers, dataset
+
+
 # -- EnDiMP-- ######################################################################
 # Enhancing Discriminative Appearance Model
 

@@ -59,7 +59,7 @@ def pack_got10k_results(tracker_name, param_name, output_name):
         param_name - name of the parameter file
         output_name - name of the packed zip file
     """
-    output_path = os.path.join(env_settings().got_packed_results_path, output_name)
+    output_path = os.path.join(env_settings().got_results_path, output_name)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)

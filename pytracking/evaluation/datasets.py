@@ -11,6 +11,8 @@ dataset_dict = dict(
     nfs=DatasetInfo(module=pt % "nfs", class_name="NFSDataset", kwargs=dict()),
     uav=DatasetInfo(module=pt % "uav", class_name="UAVDataset", kwargs=dict()),
     tpl=DatasetInfo(module=pt % "tpl", class_name="TPLDataset", kwargs=dict()),
+    tc128=DatasetInfo(module=pt % "tc128", class_name="TC128Dataset", kwargs=dict()),
+    tc128ce=DatasetInfo(module=pt % "tc128ce", class_name="TC128CEDataset", kwargs=dict()),
     tpl_nootb=DatasetInfo(module=pt % "tpl", class_name="TPLDataset", kwargs=dict(exclude_otb=True)),
     vot=DatasetInfo(module=pt % "vot", class_name="VOTDataset", kwargs=dict()),
     trackingnet=DatasetInfo(module=pt % "trackingnet", class_name="TrackingNetDataset", kwargs=dict()),

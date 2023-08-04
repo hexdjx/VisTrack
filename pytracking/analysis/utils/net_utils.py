@@ -135,47 +135,59 @@ def endimp_net_analysis():
 
 
 def fudimp_net_analysis():
-    # super_dimp.pth.tar FuDiMPnet_ff.pth.tar FuDiMPnet_awff.pth.tar FuDiMPnet_awff_att.pth.tar
+    # super_dimp.pth.tar FuDiMP_ff.pth.tar FuDiMP_awff.pth.tar FuDiMP_awff_att.pth.tar
     net = NetWithBackbone(net_path='super_dimp.pth.tar', use_gpu=True)
     net.initialize()
     # special net branch params
-    # net_params = net.net.classifier.feature_extractor.parameters()
-    # total_params = sum(p.numel() for p in net_params)
-    # print("Number of total parameter: %.2fM" % (total_params / 1e6))
+    model = net.net
+
+    # 可训练的参数
+    # ResNet_layer3_params = model.feature_extractor.layer3.parameters()
+    clf_initializer_params = model.classifier.filter_initializer.parameters()
+    clf_optimizer_params = model.classifier.filter_optimizer.parameters()
+    # clf_feature_params = model.classifier.feature_extractor.parameters()
+    # bb_regressor_params = model.bb_regressor.parameters()
+    trainable_net_params = [clf_initializer_params, clf_optimizer_params]
+    #
+    total_params = 0
+    for net_params in trainable_net_params:
+        total_params += sum(p.numel() for p in net_params)
+    # total_params = sum(p.numel() for p in bb_regressor_params)
+    print("Number of total parameter: %.2fM" % (total_params / 1e6))
 
     # Visualization of feature map
-    img = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/LaSOT/Test/zebra-17/img/00000001.jpg'  # zebra-17/img/00000001.jpg dog-15/img/00000660.jpg
-    state = [402, 320, 261, 304]  # zebra-17: 402,320,261,304 dog-15: 180,97,98,178
-    pos = torch.Tensor([state[1] + (state[3] - 1) / 2, state[0] + (state[2] - 1) / 2])
-    target_sz = torch.Tensor([state[3], state[2]])
-
-    sz = torch.Tensor([352, 352])
-
-    search_area = torch.prod(target_sz * 6).item()
-    target_scale = math.sqrt(search_area) / sz.prod().sqrt()
-    im = read_image(img)
-    im = numpy_to_torch(im)
-
-    img_patch, _ = sample_patch(im, pos.round(), target_scale * sz, sz)
-    # im_save(img_patch.cpu(), 'dog-15')
-    # im_save(img_patch.cpu(), 'zebra-17')
-
-    # plt.imshow(torch_to_numpy(img_patch.int()))
-    # plt.show()
-    with torch.no_grad():
-        backbone_feat = net.extract_backbone(img_patch, layers=['layer3'])['layer3']
-        # clf_feat = net.net.classifier.extract_classification_feat(backbone_feat)
-        backbone_feat1 = torch.sum(backbone_feat, dim=1, keepdim=True)
-        backbone_feat2 = F.interpolate(backbone_feat1, [352, 352], mode='bilinear', align_corners=False)
-
-        backbone_feat3 = torch_to_numpy(backbone_feat2.cpu())
-        # cv.imwrite('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/feat.png', cv.cvtColor(backbone_feat3, cv.COLOR_BGR2RGB))
-
-        plt.imshow(backbone_feat3)
-        plt.axis('off')
-        plt.axis('equal')
-        plt.show()
-        # plt.savefig('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/fudimp/feat.png', format='png', dpi=300)
+    # img = '/media/hexd6/aede3fa6-c741-4516-afe7-4954b8572ac9/907856427856276E/LaSOT/Test/zebra-17/img/00000001.jpg'  # zebra-17/img/00000001.jpg dog-15/img/00000660.jpg
+    # state = [402, 320, 261, 304]  # zebra-17: 402,320,261,304 dog-15: 180,97,98,178
+    # pos = torch.Tensor([state[1] + (state[3] - 1) / 2, state[0] + (state[2] - 1) / 2])
+    # target_sz = torch.Tensor([state[3], state[2]])
+    #
+    # sz = torch.Tensor([352, 352])
+    #
+    # search_area = torch.prod(target_sz * 6).item()
+    # target_scale = math.sqrt(search_area) / sz.prod().sqrt()
+    # im = read_image(img)
+    # im = numpy_to_torch(im)
+    #
+    # img_patch, _ = sample_patch(im, pos.round(), target_scale * sz, sz)
+    # # im_save(img_patch.cpu(), 'dog-15')
+    # # im_save(img_patch.cpu(), 'zebra-17')
+    #
+    # # plt.imshow(torch_to_numpy(img_patch.int()))
+    # # plt.show()
+    # with torch.no_grad():
+    #     backbone_feat = net.extract_backbone(img_patch, layers=['layer3'])['layer3']
+    #     # clf_feat = net.net.classifier.extract_classification_feat(backbone_feat)
+    #     backbone_feat1 = torch.sum(backbone_feat, dim=1, keepdim=True)
+    #     backbone_feat2 = F.interpolate(backbone_feat1, [352, 352], mode='bilinear', align_corners=False)
+    #
+    #     backbone_feat3 = torch_to_numpy(backbone_feat2.cpu())
+    #     # cv.imwrite('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/feat.png', cv.cvtColor(backbone_feat3, cv.COLOR_BGR2RGB))
+    #
+    #     plt.imshow(backbone_feat3)
+    #     plt.axis('off')
+    #     plt.axis('equal')
+    #     plt.show()
+    #     # plt.savefig('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/fudimp/feat.png', format='png', dpi=300)
 
 
 def ctp_net_analysis():
@@ -272,6 +284,7 @@ def ctp_net_analysis():
 if __name__ == "__main__":
     # rvt_net_analysis()
     # endimp_net_analysis()
-    # fudimp_net_analysis()
-    ctp_net_analysis()
+    fudimp_net_analysis()
+    # ctp_net_analysis()
+
     print('done!')

@@ -31,7 +31,6 @@ def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', se
     visdom_info = {} if visdom_info is None else visdom_info
 
     dataset = get_dataset(dataset_name)
-
     if sequence is not None:
         dataset = [dataset[sequence]]
 
@@ -42,8 +41,8 @@ def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', se
 
 def main():
     parser = argparse.ArgumentParser(description='Run tracker on sequence or dataset.')
-    parser.add_argument('--tracker_name', type=str, default='atom', help='Name of tracking method.')
-    parser.add_argument('--tracker_param', type=str, default='default', help='Name of parameter file.')
+    parser.add_argument('--tracker_name', type=str, default='transt', help='Name of tracking method.')
+    parser.add_argument('--tracker_param', type=str, default='transt50', help='Name of parameter file.')
     parser.add_argument('--runid', type=int, default=None, help='The run id.')
     parser.add_argument('--dataset_name', type=str, default='otb',
                         help='Name of dataset (otb, nfs, uav, tpl, tpl_nootb, vot, got10k_ltrval, got10k_val, lasot).')

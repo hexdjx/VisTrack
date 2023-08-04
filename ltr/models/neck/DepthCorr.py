@@ -10,8 +10,7 @@ from ltr.models.utils import SE_Block, NonLocal_Block, conv_bn_relu
 def depth_corr(x, kernel):
     """depthwise cross neck
     """
-    batch = kernel.size(0)
-    channel = kernel.size(1)
+    batch, channel = kernel.shape[:2]
     x = x.view(1, batch * channel, x.size(2), x.size(3))
     kernel = kernel.view(batch * channel, 1, kernel.size(2), kernel.size(3))
     out = F.conv2d(x, kernel, groups=batch * channel)

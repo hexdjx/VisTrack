@@ -1,5 +1,5 @@
 import os
-from got10k.experiments import ExperimentUAV123
+from pytracking.got10k.experiments import ExperimentUAV123
 
 if __name__ == '__main__':
     # linux
@@ -16,8 +16,14 @@ if __name__ == '__main__':
                                       result_dir=result_path,
                                       report_dir=report_path)
 
+    base_path = r'D:\Tracking\VisTrack\pytracking\results\UAV123'
+    trackers = []
+    for dir in os.listdir(base_path):
+        if dir.startswith('fudimp'): # super_dimp
+            trackers.append(dir)
+
     # report performance
     # experiment_uav.report(['SuperDiMP', 'SuperDiMP_verifier', 'EnDiMP', 'EnDiMP_verifier'])
     # experiment_uav.report(['FuDiMP_awff_att', 'FuDiMP_awff', 'FuDiMP_ff'])
     # experiment_uav.report(['FuDiMP_psme', 'FuDiMP_apce', 'FuDiMP_psr'])
-    experiment_uav.report(['CTP'])
+    experiment_uav.report(trackers)

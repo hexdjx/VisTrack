@@ -14,7 +14,7 @@ def run(settings):
     settings.description = 'SuperDiMP: Combines the DiMP classifier with the PrDiMP bounding box regressor and better' \
                            'training settings (larger batch size, inside_major cropping, and flipping augmentation.' \
                            'Gives results significantly better than both DiMP-50 and PrDiMP-50.'
-    settings.batch_size = 10  # 20
+    settings.batch_size = 20
     settings.num_workers = 8
     settings.multi_gpu = False
     settings.print_interval = 1

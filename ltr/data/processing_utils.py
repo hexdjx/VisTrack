@@ -21,7 +21,6 @@ def sample_target(im, target_bb, search_area_factor, output_sz=None, mask=None):
         float - the factor by which the crop has been resized to make the crop size equal output_size
     """
     x, y, w, h = target_bb.tolist()
-
     # Crop image
     crop_sz = math.ceil(math.sqrt(w * h) * search_area_factor)
 
@@ -66,6 +65,60 @@ def sample_target(im, target_bb, search_area_factor, output_sz=None, mask=None):
         if mask is None:
             return im_crop_padded, 1.0
         return im_crop_padded, 1.0, mask_crop_padded
+
+
+# for d3s use
+def sample_target_seg(im, target_bb, search_area_factor, output_sz=None, pad_val=None):
+    """ Extracts a square crop centered at target_bb box, of area search_area_factor^2 times target_bb area
+
+    args:
+        im - cv image
+        target_bb - target box [x, y, w, h]
+        search_area_factor - Ratio of crop size to target size
+        output_sz - (float) Size to which the extracted crop is resized (always square). If None, no resizing is done.
+
+    returns:
+        cv image - extracted crop
+        float - the factor by which the crop has been resized to make the crop size equal output_size
+    """
+
+    x, y, w, h = target_bb.tolist()
+
+    # Crop image
+    crop_sz = math.ceil(math.sqrt(w * h) * search_area_factor)
+
+    if crop_sz < 1:
+        raise Exception('Too small bounding box.')
+
+    x1 = round(x + 0.5 * w - crop_sz * 0.5)
+    x2 = x1 + crop_sz
+
+    y1 = round(y + 0.5 * h - crop_sz * 0.5)
+    y2 = y1 + crop_sz
+
+    x1_pad = max(0, -x1)
+    x2_pad = max(x2 - im.shape[1] + 1, 0)
+
+    y1_pad = max(0, -y1)
+    y2_pad = max(y2 - im.shape[0] + 1, 0)
+
+    # Crop target
+    if len(im.shape) > 2:
+        im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
+    else:
+        im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad]
+
+    # Pad
+    if pad_val is None:
+        im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
+    else:
+        im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_CONSTANT, value=pad_val)
+
+    if output_sz is not None:
+        resize_factor = output_sz / crop_sz
+        return cv.resize(im_crop_padded, (output_sz, output_sz)), resize_factor
+    else:
+        return im_crop_padded, 1.0
 
 
 def transform_image_to_crop(box_in: torch.Tensor, box_extract: torch.Tensor, resize_factor: float,
@@ -300,64 +353,6 @@ def sample_target_adaptive(im, target_bb, search_area_factor, output_sz, mode: s
         return im_out, crop_box
     else:
         return im_out, crop_box, mask_out
-
-
-def crop_and_resize(im, box, crop_bb, output_sz, mask=None):
-    if isinstance(output_sz, (float, int)):
-        output_sz = (output_sz, output_sz)
-
-    im_h = im.shape[0]
-    im_w = im.shape[1]
-
-    if crop_bb[2] < 1 or crop_bb[3] < 1:
-        raise Exception('Too small bounding box.')
-
-    x1 = crop_bb[0]
-    x2 = crop_bb[0] + crop_bb[2]
-
-    y1 = crop_bb[1]
-    y2 = crop_bb[1] + crop_bb[3]
-
-    x1_pad = max(0, -x1)
-    x2_pad = max(x2 - im.shape[1] + 1, 0)
-
-    y1_pad = max(0, -y1)
-    y2_pad = max(y2 - im.shape[0] + 1, 0)
-
-    # Crop target
-    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
-
-    if mask is not None:
-        mask_crop = mask[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad]
-
-    # Pad
-    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, cv.BORDER_REPLICATE)
-
-    if mask is not None:
-        mask_crop_padded = F.pad(mask_crop, pad=(x1_pad, x2_pad, y1_pad, y2_pad), mode='constant', value=0)
-
-    # Resize image
-    im_out = cv.resize(im_crop_padded, output_sz)
-
-    if mask is not None:
-        mask_out = F.interpolate(mask_crop_padded[None, None], (output_sz[1], output_sz[0]), mode='nearest')[0, 0]
-
-    rescale_factor = output_sz[0] / crop_bb[2]
-
-    # Hack
-    if box is not None:
-        box_crop = box.clone()
-        box_crop[0] -= crop_bb[0]
-        box_crop[1] -= crop_bb[1]
-
-        box_crop *= rescale_factor
-    else:
-        box_crop = None
-
-    if mask is None:
-        return im_out, box_crop
-    else:
-        return im_out, box_crop, mask_out
 
 
 def transform_box_to_crop(box: torch.Tensor, crop_box: torch.Tensor, crop_sz: torch.Tensor) -> torch.Tensor:
@@ -629,44 +624,6 @@ def sample_box_gmm(mean_box, proposal_sigma, gt_sigma=None, num_samples=1, add_m
 
     return proposals, proposal_density, gt_density
 
-def find_local_maxima(scores, th, ks):
-    """Find local maxima in a heat map.
-        args:
-            scores - heat map to find the local maxima in.
-            th - threshold that defines the minamal value needed to be considered as a local maximum.
-            ks = local neighbourhood (kernel size) specifiying the minimal distance between two maxima.
-
-        returns:
-            coordinates and values of the local maxima.
-    """
-    ndims = scores.ndim
-
-    if ndims == 2:
-        scores = scores.view(1, 1, scores.shape[0], scores.shape[1])
-
-    scores_max = F.max_pool2d(scores, kernel_size=ks, stride=1, padding=ks//2)
-
-    peak_mask = (scores == scores_max) & (scores > th)
-    coords = torch.nonzero(peak_mask)
-    intensities = scores[peak_mask]
-
-    # Highest peak first
-    idx_maxsort = torch.argsort(-intensities)
-    coords = coords[idx_maxsort]
-    intensities = intensities[idx_maxsort]
-
-    if ndims == 4:
-
-        coords_batch, intensities_batch, = TensorList(), TensorList()
-        for i in range(scores.shape[0]):
-            mask = (coords[:, 0] == i)
-            coords_batch.append(coords[mask, 2:])
-            intensities_batch.append(intensities[mask])
-    else:
-        coords_batch = coords[:, 2:]
-        intensities_batch = intensities
-
-    return coords_batch, intensities_batch
 
 # --RVT-- #####################################################################
 # a simple negative sampling method
@@ -683,7 +640,6 @@ def target_proposals(box):
 
 
 def target_proposals_gauss(box, max_iou=0.3, sigma_factor=0.5):
-
     if not isinstance(sigma_factor, torch.Tensor):
         sigma_factor = sigma_factor * torch.ones(2)
 
@@ -691,7 +647,10 @@ def target_proposals_gauss(box, max_iou=0.3, sigma_factor=0.5):
 
     boxs = [box]
     # multiple tries to ensure that the perturbed box has iou < min_iou with the input box
-    for i_ in range(100):
+
+    iter_N = 0
+    while len(boxs) < 5 and iter_N < 100:
+        iter_N += 1
         c_x = box[0] + 0.5 * box[2]
         c_y = box[1] + 0.5 * box[3]
         c_x_per = random.gauss(c_x, perturb_factor[0])
@@ -701,26 +660,12 @@ def target_proposals_gauss(box, max_iou=0.3, sigma_factor=0.5):
 
         box_iou = iou(box.view(1, 4), box_per.view(1, 4))
 
-        # reduce the perturb factor
-        perturb_factor *= 1.1
+        # increase the perturb factor
+        perturb_factor *= 0.9
 
         if 0 < box_iou < max_iou:
             boxs.append(box_per)
-            if len(boxs) == 5:
-                bboxs = torch.stack(boxs, dim=0)
-                return bboxs
 
-    # in case negative sample is insufficient
-    radius = torch.ceil(torch.sqrt(box[2] * box[3]) / 2)
-    box_1 = torch.Tensor([box[0] - radius, box[1] - radius, box[2], box[3]]).round()
-    box_2 = torch.Tensor([box[0] + radius, box[1] - radius, box[2], box[3]]).round()
-    box_3 = torch.Tensor([box[0] + radius, box[1] + radius, box[2], box[3]]).round()
-    box_4 = torch.Tensor([box[0] - radius, box[1] + radius, box[2], box[3]]).round()
-    boxs.append(box_1)
-    boxs.append(box_2)
-    boxs.append(box_3)
-    boxs.append(box_4)
-    boxs = boxs[:5]
     bboxs = torch.stack(boxs, dim=0)
 
     return bboxs
@@ -734,6 +679,10 @@ def crop_target_proposals(im, anno, output_sz=128):
 
     y1 = round(y)
     y2 = round(y1 + h)
+
+    # 防止x2 y2小于0
+    x2 = max(x2, 10)
+    y2 = max(y2, 10)
 
     x1_pad = max(0, -x1)
     x2_pad = max(x2 - im.shape[1] + 1, 0)
@@ -752,250 +701,64 @@ def crop_target_proposals(im, anno, output_sz=128):
     return im_crop_padded
 
 
-# --AlphaRefine--#####################################################################
-#  for scale estimation(no square)
-def sample_target_v2(im, target_bb, search_area_factor=1.0, output_sz=None, mode=cv.BORDER_REPLICATE):
-    """ Extracts a crop centered at target_bb box, especially, search_area_factor times target_bb(Both height and width)
+####################################################
+def bbox_clip(bbox, boundary, min_sz=10):
+    """boundary img.shape (H,W)"""
+    bbox[2:] = bbox[:2] + bbox[2:]
+    x1, y1, x2, y2 = bbox.tolist()
 
-    args:
-        im - cv image
-        target_bb - target box [x, y, w, h]
-        search_area_factor - Ratio of crop size to target size
-        output_sz - (float) Size to which the extracted crop is resized (always square). If None, no resizing is done.
+    x1_new = max(0, min(x1, boundary[1] - min_sz))
+    y1_new = max(0, min(y1, boundary[0] - min_sz))
+    x2_new = max(min_sz, min(x2, boundary[1]))
+    y2_new = max(min_sz, min(y2, boundary[0]))
 
-    returns:
-        cv image - extracted crop
-        float - the factor by which the crop has been resized to make the crop size equal output_size
-    """
-
-    x, y, w, h = target_bb.tolist()
-
-    # Crop image
-    ws = math.ceil(search_area_factor * w)
-    hs = math.ceil(search_area_factor * h)
-
-    if ws < 1 or hs < 1:
-        raise Exception('Too small bounding box.')
-
-    x1 = round(x + 0.5 * w - ws * 0.5)
-    x2 = x1 + ws
-
-    y1 = round(y + 0.5 * h - hs * 0.5)
-    y2 = y1 + hs
-
-    x1_pad = max(0, -x1)
-    x2_pad = max(x2 - im.shape[1] + 1, 0)
-
-    y1_pad = max(0, -y1)
-    y2_pad = max(y2 - im.shape[0] + 1, 0)
-
-    # Crop target
-    im_crop = im[y1 + y1_pad:y2 - y2_pad, x1 + x1_pad:x2 - x2_pad, :]
-
-    # Pad
-    im_crop_padded = cv.copyMakeBorder(im_crop, y1_pad, y2_pad, x1_pad, x2_pad, mode)
-
-    if output_sz is not None:
-        w_rsz_f = output_sz / ws
-        h_rsz_f = output_sz / hs
-        im_crop_padded_rsz = cv.resize(im_crop_padded, (output_sz, output_sz))
-        if len(im_crop_padded_rsz.shape) == 2:
-            im_crop_padded_rsz = im_crop_padded_rsz[..., np.newaxis]
-        return im_crop_padded_rsz, h_rsz_f, w_rsz_f
-    else:
-        return im_crop_padded, 1.0, 1.0
+    return torch.Tensor([x1_new, y1_new, x2_new - x1_new + 1, y2_new - y1_new + 1])
 
 
-def transform_image_to_crop_v2(box_in: torch.Tensor, box_extract: torch.Tensor, resize_factor_h: float,
-                               resize_factor_w: float, crop_sz: torch.Tensor) -> torch.Tensor:
-    """ Transform the box co-ordinates from the original image co-ordinates to the co-ordinates of the cropped image
-    args:
-        box_in - the box for which the co-ordinates are to be transformed
-        box_extract - the box about which the image crop has been extracted.
-        resize_factor - the ratio between the original image scale and the scale of the image crop
-        crop_sz - size of the cropped image
+def perturb_target_box(box, output_sz, max_iou=0.3, sigma_factor=0.5):
+    if isinstance(output_sz, (float, int)):
+        output_sz = (output_sz, output_sz)
 
-    returns:
-        torch.Tensor - transformed co-ordinates of box_in
-    """
-    box_extract_center = box_extract[0:2] + 0.5 * box_extract[2:4]
+    if not isinstance(sigma_factor, torch.Tensor):
+        sigma_factor = sigma_factor * torch.ones(4)
 
-    box_in_center = box_in[0:2] + 0.5 * box_in[2:4]
+    perturb_factor = torch.sqrt(box[2] * box[3]) * sigma_factor
 
-    box_out_xc = (crop_sz[0] - 1) / 2 + (box_in_center[0] - box_extract_center[0]) * resize_factor_w
-    box_out_yc = (crop_sz[1] - 1) / 2 + (box_in_center[1] - box_extract_center[1]) * resize_factor_h
-    box_out_w = box_in[2] * resize_factor_w
-    box_out_h = box_in[3] * resize_factor_h
+    boxs = [box]
 
-    '''2019.12.28 为了避免出现(x1,y1)小于0,或者(x2,y2)大于256的情况,这里我对它们加上了一些限制
-    max_sz = crop_sz[0].item()
-    box_out_x1 = torch.clamp(box_out_xc - 0.5 * box_out_w,0,max_sz)
-    box_out_y1 = torch.clamp(box_out_yc - 0.5 * box_out_h,0,max_sz)
-    box_out_x2 = torch.clamp(box_out_xc + 0.5 * box_out_w,0,max_sz)
-    box_out_y2 = torch.clamp(box_out_yc + 0.5 * box_out_h,0,max_sz)
-    box_out_w_new = box_out_x2 - box_out_x1
-    box_out_h_new = box_out_y2 - box_out_y1
-    box_out = torch.stack((box_out_x1, box_out_y1, box_out_w_new, box_out_h_new))
-    '''
-    box_out = torch.cat((box_out_xc - 0.5 * box_out_w, box_out_yc - 0.5 * box_out_h, box_out_w, box_out_h))
-    return box_out
+    iter_N = 0
+    while len(boxs) < 5 and iter_N < 200:
+        iter_N += 1
 
+        c_x = box[0] + 0.5 * box[2]
+        c_y = box[1] + 0.5 * box[3]
+        c_x_per = random.gauss(c_x, perturb_factor[0])
+        c_y_per = random.gauss(c_y, perturb_factor[1])
 
-def jittered_center_crop_v2(frames, box_extract, box_gt, search_area_factor, output_sz, get_bbox_coord=True,
-                            mode=cv.BORDER_REPLICATE):
-    """
-    Crop a patch centered at box_extract. The height and width of cropped region is search_area_factor times that of box_extract.
-    The extracted crops are then resized to output_sz. Further, the co-ordinates of the box box_gt are transformed to the image crop co-ordinates
-    args:
-        frames - list of frames
-        box_extract - list of boxes of same length as frames. The crops are extracted using anno_extract
-        box_gt - list of boxes of same length as frames. The co-ordinates of these boxes are transformed from
-                    image co-ordinates to the crop co-ordinates
-        search_area_factor - The area of the extracted crop is search_area_factor^2 times box_extract area
-        output_sz - The size to which the extracted crops are resized
+        w_per = random.gauss(box[2], perturb_factor[2])
+        h_per = random.gauss(box[3], perturb_factor[3])
 
-    returns:
-        list - list of image crops
-        list - box_gt location in the crop co-ordinates
-    """
+        if w_per <= 1:
+            w_per = box[2] * rand_uniform(0.15, 0.5)
 
-    crops_resize_factors = [sample_target_v2(f, a, search_area_factor, output_sz, mode=mode)
-                            for f, a in zip(frames, box_extract)]
+        if h_per <= 1:
+            h_per = box[3] * rand_uniform(0.15, 0.5)
 
-    frames_crop, resize_factors_h, resize_factors_w = zip(*crops_resize_factors)
-    if get_bbox_coord:
-        crop_sz = torch.Tensor([output_sz, output_sz])
+        box_per = torch.Tensor([c_x_per - 0.5 * w_per, c_y_per - 0.5 * h_per, w_per, h_per]).round()
 
-        # find the bb location in the crop
-        '''get GT's cooridinate on the cropped patch'''
-        box_crop = [transform_image_to_crop_v2(a_gt, a_ex, h_rsf, w_rsf, crop_sz)
-                    for a_gt, a_ex, h_rsf, w_rsf in zip(box_gt, box_extract, resize_factors_h, resize_factors_w)]
+        box_per = bbox_clip(box_per, output_sz)
 
-        return frames_crop, box_crop
-    else:
-        return frames_crop
+        box_iou = iou(box.view(1, 4), box_per.view(1, 4))
 
-#################################################################################
+        # if there is sufficient overlap, return
+        if box_iou < max_iou:
+            boxs.append(box_per)
 
-# --MDNet--#################################################
-# function: sampling required pos/neg samples
-def overlap_ratio(rect1, rect2):
-    '''
-    Compute overlap ratio between two rects
-    - rect: 1d array of [x,y,w,h] or
-            2d array of N x [x,y,w,h]
-    '''
+        # else increase the perturb factor
+        perturb_factor *= 1.1
 
-    if rect1.ndim == 1:
-        rect1 = rect1[None, :]
-    if rect2.ndim == 1:
-        rect2 = rect2[None, :]
+    if len(boxs) < 5:
+        for i in range(5 - len(boxs)):
+            boxs.append(boxs[1])
 
-    left = np.maximum(rect1[:, 0], rect2[:, 0])
-    right = np.minimum(rect1[:, 0] + rect1[:, 2], rect2[:, 0] + rect2[:, 2])
-    top = np.maximum(rect1[:, 1], rect2[:, 1])
-    bottom = np.minimum(rect1[:, 1] + rect1[:, 3], rect2[:, 1] + rect2[:, 3])
-
-    intersect = np.maximum(0, right - left) * np.maximum(0, bottom - top)
-    union = rect1[:, 2] * rect1[:, 3] + rect2[:, 2] * rect2[:, 3] - intersect
-    iou = np.clip(intersect / union, 0, 1)
-    return iou
-
-
-# for example:
-# pos_examples = SampleGenerator('gaussian', image.size, 0.1, 1.3)(
-#             target_bbox, 500, [0.7, 1])
-
-# pos_examples = SampleGenerator('gaussian', image.size, 0.1, 1.3)(
-#             target_bbox, 500, [0.7, 1])
-class SampleGenerator():
-    def __init__(self, type_, img_size, trans=1, scale=1, aspect=None, valid=False):
-        self.type = type_
-        self.img_size = np.array(img_size)  # (w, h)
-        self.trans = trans
-        self.scale = scale
-        self.aspect = aspect
-        self.valid = valid
-
-    def _gen_samples(self, bb, n):
-        #
-        # bb: target bbox (min_x,min_y,w,h)
-        bb = np.array(bb, dtype='float32')
-
-        # (center_x, center_y, w, h)
-        sample = np.array([bb[0] + bb[2] / 2, bb[1] + bb[3] / 2, bb[2], bb[3]], dtype='float32')
-        samples = np.tile(sample[None, :], (n, 1))
-
-        # vary aspect ratio
-        if self.aspect is not None:
-            ratio = np.random.rand(n, 2) * 2 - 1
-            samples[:, 2:] *= self.aspect ** ratio
-
-        # sample generation
-        if self.type == 'gaussian':
-            samples[:, :2] += self.trans * np.mean(bb[2:]) * np.clip(0.5 * np.random.randn(n, 2), -1, 1)
-            samples[:, 2:] *= self.scale ** np.clip(0.5 * np.random.randn(n, 1), -1, 1)
-
-        elif self.type == 'uniform':
-            samples[:, :2] += self.trans * np.mean(bb[2:]) * (np.random.rand(n, 2) * 2 - 1)
-            samples[:, 2:] *= self.scale ** (np.random.rand(n, 1) * 2 - 1)
-
-        elif self.type == 'whole':
-            m = int(2 * np.sqrt(n))
-            xy = np.dstack(np.meshgrid(np.linspace(0, 1, m), np.linspace(0, 1, m))).reshape(-1, 2)
-            xy = np.random.permutation(xy)[:n]
-            samples[:, :2] = bb[2:] / 2 + xy * (self.img_size - bb[2:] / 2 - 1)
-            samples[:, 2:] *= self.scale ** (np.random.rand(n, 1) * 2 - 1)
-
-        # adjust bbox range
-        samples[:, 2:] = np.clip(samples[:, 2:], 10, self.img_size - 10)
-        if self.valid:
-            samples[:, :2] = np.clip(samples[:, :2], samples[:, 2:] / 2, self.img_size - samples[:, 2:] / 2 - 1)
-        else:
-            samples[:, :2] = np.clip(samples[:, :2], 0, self.img_size)
-
-        # (min_x, min_y, w, h)
-        samples[:, :2] -= samples[:, 2:] / 2
-
-        return samples
-
-    def __call__(self, bbox, n, overlap_range=None, scale_range=None):
-
-        if overlap_range is None and scale_range is None:
-            return self._gen_samples(bbox, n)
-
-        else:
-            samples = None
-            remain = n
-            factor = 2
-            while remain > 0 and factor < 16:
-                samples_ = self._gen_samples(bbox, remain * factor)
-
-                idx = np.ones(len(samples_), dtype=bool)
-                if overlap_range is not None:
-                    r = overlap_ratio(samples_, bbox)
-                    idx *= (r >= overlap_range[0]) * (r <= overlap_range[1])
-                if scale_range is not None:
-                    s = np.prod(samples_[:, 2:], axis=1) / np.prod(bbox[2:])
-                    idx *= (s >= scale_range[0]) * (s <= scale_range[1])
-
-                samples_ = samples_[idx, :]
-                samples_ = samples_[:min(remain, len(samples_))]
-                if samples is None:
-                    samples = samples_
-                else:
-                    samples = np.concatenate([samples, samples_])
-                remain = n - len(samples)
-                factor = factor * 2
-
-            return samples
-
-    def set_type(self, type_):
-        self.type = type_
-
-    def set_trans(self, trans):
-        self.trans = trans
-
-    def expand_trans(self, trans_limit):
-        self.trans = min(self.trans * 1.1, trans_limit)
-############################################################
+    return torch.stack(boxs, dim=0)

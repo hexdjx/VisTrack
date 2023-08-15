@@ -20,23 +20,23 @@ def irfftshift2(a: torch.Tensor):
 def cfft2(a):
     """Do FFT and center the low frequency component.
     Always produces odd (full) output sizes."""
-
-    return rfftshift2(torch.rfft(a, 2))
-
-    # new torch version # results not consistent
-    # a = torch.fft.fft2(a, dim=(-2, -1))
-    # return rfftshift2(torch.stack((a.real, a.imag), -1))
+    if torch.__version__ <= '1.7.0':
+        return rfftshift2(torch.rfft(a, 2))
+    else:
+        # new torch version # results not consistent
+        a = torch.fft.rfft2(a)
+        return rfftshift2(torch.stack((a.real, a.imag), -1))
 
 
 @tensor_operation
 def cifft2(a, signal_sizes=None):
     """Do inverse FFT corresponding to cfft2."""
-
-    return torch.irfft(irfftshift2(a), 2, signal_sizes=signal_sizes)  # old torch version
-
-    # new torch version
-    # a = irfftshift2(a)
-    # return torch.fft.irfft2(torch.complex(a[:, :, 0], a[:, :, 1]), s=signal_sizes, dim=(-2, -1))
+    if torch.__version__ <= '1.7.0':
+        return torch.irfft(irfftshift2(a), 2, signal_sizes=signal_sizes)  # old torch version
+    else:
+        # new torch version
+        a = irfftshift2(a)
+        return torch.fft.irfft2(torch.complex(a[..., 0], a[..., 1]), s=signal_sizes, dim=(-2, -1))
 
 
 @tensor_operation
@@ -153,4 +153,3 @@ def inner_prod_fs(a: torch.Tensor, b: torch.Tensor):
         return 2 * (a.reshape(-1) @ b.reshape(-1)) - a[:, :, :, 0].reshape(-1) @ b[:, :, :, 0].reshape(-1)
     else:
         raise NotImplementedError('Not implemented for mixed real and complex.')
-

@@ -1,5 +1,6 @@
-from got10k.trackers import Tracker as GOT_Tracker
-from got10k.experiments import ExperimentOTB, ExperimentUAV123, ExperimentNfS, ExperimentTColor128, ExperimentGOT10k
+from pytracking.external.got10k.trackers import Tracker as GOT_Tracker
+from pytracking.external.got10k.experiments import ExperimentOTB, ExperimentUAV123, ExperimentNfS, ExperimentTColor128, \
+    ExperimentGOT10k
 import numpy as np
 import os
 import sys
@@ -7,8 +8,8 @@ import argparse
 import torch
 
 from pytracking.evaluation.environment import env_settings
-from pytracking.refine_modules.refine_module import RefineModule
-from pytracking.refine_modules.utils import get_axis_aligned_bbox, bbox_clip
+from pytracking.external.refine_modules.refine_module import RefineModule
+from pytracking.external.refine_modules.utils import get_axis_aligned_bbox, bbox_clip
 
 env_path = os.path.join(os.path.dirname(__file__), '..')
 if env_path not in sys.path:
@@ -46,6 +47,7 @@ class GOT_Tracker(GOT_Tracker):
 
         return pred_bbox
 
+
 # using AlphaRefine to refine base tracker
 class GOT_Tracker_AR(GOT_Tracker):
     def __init__(self):
@@ -53,7 +55,7 @@ class GOT_Tracker_AR(GOT_Tracker):
         self.tracker = TrTracker.tracker_class(TrTracker.get_parameters())
 
         # create Refinement module
-        self.RF_module = RefineModule(os.path.join(env_settings().network_path, 'SEcmnet_ep0040-c.pth.tar'),selector=0)
+        self.RF_module = RefineModule(os.path.join(env_settings().network_path, 'SEcmnet_ep0040-c.pth.tar'), selector=0)
 
     def init(self, image, box):
         image = np.array(image)
@@ -101,12 +103,12 @@ if __name__ == '__main__':
     tracker = GOT_Tracker_AR()  # GOT_Tracker()
 
     Experiments = [
-                   (ExperimentOTB, env_settings().otb_path),
-                   (ExperimentUAV123, env_settings().uav_path),
-                   (ExperimentNfS, env_settings().nfs_path),
-                   (ExperimentTColor128, env_settings().tpl_path),
-                   (ExperimentGOT10k, env_settings().got10k_path)
-                   ]
+        (ExperimentOTB, env_settings().otb_path),
+        (ExperimentUAV123, env_settings().uav_path),
+        (ExperimentNfS, env_settings().nfs_path),
+        (ExperimentTColor128, env_settings().tpl_path),
+        (ExperimentGOT10k, env_settings().got10k_path)
+    ]
 
     # run experiments using GOT-10k
     for exps, data_root in Experiments:

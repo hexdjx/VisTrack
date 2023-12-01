@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
     return nn.Sequential(
         nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
-                  padding=padding, dilation=dilation, bias=True),
+                  padding=padding, dilation=dilation),
         nn.BatchNorm2d(out_planes),
         nn.ReLU(inplace=True))
 
@@ -13,7 +14,7 @@ def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):
 class Corner_Predictor(nn.Module):
     """ Corner Predictor module"""
 
-    def __init__(self, inplanes=64, channel=256):
+    def __init__(self, inplanes=64, channel=256, output_sz=288):
         super(Corner_Predictor, self).__init__()
 
         '''top-left corner'''
@@ -32,13 +33,16 @@ class Corner_Predictor(nn.Module):
 
         '''about coordinates and indexs'''
         with torch.no_grad():
-            self.output_sz = 16  # same as input resolution
-            self.indice = torch.arange(0, self.output_sz).view(-1, 1) * 16
+            self.output_sz = output_sz  # 和输入分辨率相同
+            self.indice = torch.arange(0, self.output_sz).view(-1, 1)
+
             # generate mesh-grid
             self.coord_x = self.indice.repeat((self.output_sz, 1)) \
-                .view((self.output_sz * self.output_sz,)).float().cuda()
+                .view((
+                      self.output_sz * self.output_sz,)).float().cuda()  # [[0,1...W-1],[0,1,...W-1],...] (output_sz*output_sz,)
             self.coord_y = self.indice.repeat((1, self.output_sz)) \
-                .view((self.output_sz * self.output_sz,)).float().cuda()
+                .view((
+                      self.output_sz * self.output_sz,)).float().cuda()  # [[0,0.....0],[1,1,.....1],...] (output_sz*output_sz,)
 
     def forward(self, x):
         """ Forward pass with input x. """
@@ -48,18 +52,17 @@ class Corner_Predictor(nn.Module):
         return torch.stack((coorx_tl, coory_tl, coorx_br, coory_br), dim=1)
 
     def get_score_map(self, x):
-        # top-left branch
-        x_tl1 = self.conv1_tl(x)
-        x_tl2 = self.conv2_tl(x_tl1)
-        x_tl3 = self.conv3_tl(x_tl2)
-        x_tl4 = self.conv4_tl(x_tl3)
+        '''top-left branch'''
+        x_tl1 = F.upsample(self.conv1_tl(x), scale_factor=2, mode='bilinear')  # (256,32,32)
+        x_tl2 = F.upsample(self.conv2_tl(x_tl1), scale_factor=2, mode='bilinear')  # (128,64,64)
+        x_tl3 = F.upsample(self.conv3_tl(x_tl2), scale_factor=2, mode='bilinear')  # (64,128,128)
+        x_tl4 = F.upsample(self.conv4_tl(x_tl3), scale_factor=2, mode='bilinear')  # (32,256,256)
         score_map_tl = self.conv5_tl(x_tl4)
-
-        # bottom-right branch
-        x_br1 = self.conv1_br(x)
-        x_br2 = self.conv2_br(x_br1)
-        x_br3 = self.conv3_br(x_br2)
-        x_br4 = self.conv4_br(x_br3)
+        '''bottom-right branch'''
+        x_br1 = F.upsample(self.conv1_br(x), scale_factor=2, mode='bilinear')  # (256,32,32)
+        x_br2 = F.upsample(self.conv2_br(x_br1), scale_factor=2, mode='bilinear')  # (128,64,64)
+        x_br3 = F.upsample(self.conv3_br(x_br2), scale_factor=2, mode='bilinear')  # (64,128,128)
+        x_br4 = F.upsample(self.conv4_br(x_br3), scale_factor=2, mode='bilinear')  # (32,256,256)
         score_map_br = self.conv5_br(x_br4)
         return score_map_tl, score_map_br
 
@@ -71,7 +74,7 @@ class Corner_Predictor(nn.Module):
 
     def score2heat(self, score_map):
         prob_vec = nn.functional.softmax(
-            score_map.view((-1, self.output_sz * self.output_sz)), dim=1)  # (batch, output_sz * output_sz)
+            score_map.view((-1, self.output_sz*self.output_sz)), dim=1)  # (batch, output_sz * output_sz)
         heatmap = prob_vec.view((-1, self.output_sz, self.output_sz))
         return heatmap
 
@@ -85,7 +88,7 @@ class Corner_Predictor(nn.Module):
 
 
 if __name__ == '__main__':
-    heatmap = torch.ones((1, 1, 256, 256)) * (-5)
+    heatmap = torch.ones((1, 1, 288, 288)) * (-5)
     heatmap[0, 0, 125, 10] = 20.0
     corner_predictor = Corner_Predictor()
     exp_x, exp_y = corner_predictor.soft_argmax(heatmap.cuda())

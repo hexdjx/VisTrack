@@ -31,25 +31,6 @@ def sample_patch_transformed(im, pos, scale, image_sz, transforms, is_mask=False
     return im_patches
 
 
-# --my add-- ##########################################################################
-def patch_prob_transformed(im_patch, target_prob, transforms, is_mask=False):
-    """Extract transformed image samples.
-    args:
-        im: Image.
-        pos: Center position for extraction.
-        scale: Image scale to extract features from.
-        image_sz: Size to resize the image samples to before extraction.
-        transforms: A set of image transforms to apply.
-    """
-    # Apply transforms
-    im_patches = torch.cat([T(im_patch, is_mask=is_mask) for T in transforms])
-    target_probs = torch.cat([T(target_prob, is_mask=is_mask) for T in transforms])
-
-    return im_patches, target_probs
-
-
-#######################################################################################
-
 def sample_patch(im: torch.Tensor, pos: torch.Tensor, sample_sz: torch.Tensor, output_sz: torch.Tensor = None,
                  mode: str = 'replicate', max_scale_change=None, is_mask=False):
     """Sample an image patch.
@@ -104,8 +85,12 @@ def sample_patch(im: torch.Tensor, pos: torch.Tensor, sample_sz: torch.Tensor, o
     szl = torch.max(sz.round(), torch.Tensor([2])).long()
 
     # Extract top and bottom coordinates
-    tl = posl - (szl - 1) // 2
-    br = posl + szl // 2 + 1
+    if torch.__version__ <= '1.7.0':
+        tl = posl - (szl - 1) // 2
+        br = posl + szl // 2 + 1
+    else:
+        tl = posl - torch.div((szl - 1), 2, rounding_mode='trunc')
+        br = posl + torch.div(szl, 2, rounding_mode='trunc')
 
     # Shift the crop to inside
     if mode == 'inside' or mode == 'inside_major':
@@ -166,8 +151,7 @@ def sample_patch_multiscale(im, pos, scales, image_sz, mode: str = 'replicate', 
     return im_patches, patch_coords
 
 
-############################################################
-# my add
+# --endimp/oupt/rvt---------------------------------------------------------------------------
 def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Tensor, output_sz: torch.Tensor = None,
                         pad_mode: str = 'replicate', is_mask=False):
     # crop target image patch and resize
@@ -201,4 +185,20 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
 
     return im_patch, patch_coord
 
-############################################################
+
+# --ctp-- -----------------------------------------------------------------------
+def patch_prob_transformed(im_patch, target_prob, transforms, is_mask=False):
+    """Extract transformed image samples.
+    args:
+        im: Image.
+        pos: Center position for extraction.
+        scale: Image scale to extract features from.
+        image_sz: Size to resize the image samples to before extraction.
+        transforms: A set of image transforms to apply.
+    """
+    # Apply transforms
+    im_patches = torch.cat([T(im_patch, is_mask=is_mask) for T in transforms])
+    target_probs = torch.cat([T(target_prob, is_mask=is_mask) for T in transforms])
+
+    return im_patches, target_probs
+# ---------------------------------------------------------------------------------------

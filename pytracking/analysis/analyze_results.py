@@ -1,8 +1,8 @@
-    # Generating Results on Datasets
+# Generating Results on Datasets
 
 import matplotlib.pyplot as plt
 
-plt.rcParams['figure.figsize'] = [7, 4]  # 14，8
+plt.rcParams['figure.figsize'] = [7, 4]
 
 from pytracking.analysis.plot_results import plot_results, print_results, print_per_sequence_results
 from pytracking.evaluation import Tracker, get_dataset, trackerlist
@@ -264,40 +264,124 @@ def analysis_FuDiMP():
 
     trackers.extend(trackerlist('fudimp', 'fudimp_awff_att', None, 'FuDiMP'))  # otb, nfs, uav, lasot
     trackers.extend(trackerlist('fudimp_mu', 'default', None, 'FuDiMP_MU'))  # otb, nfs, uav, lasot
-    
+
     # tomp test
     trackers.extend(trackerlist('tomp', 'fu_tomp50', None, 'FuToMP'))  # otb, nfs, uav, lasot
-
 
     return trackers
 
 
-# trackers = analysis_VSLT()
+# --CAT--- #########################################################################
+# Color Attention Tracking with Score Matching
+def analysis_CAT():
+    trackers = []
+    # trackers.extend(trackerlist('cat', 'default', None, 'default'))
+    # trackers.extend(trackerlist('cat', 'default_64', None, 'default_64'))
+
+    # trackers.extend(trackerlist('cat', 'default_mean', None, 'default_mean'))
+    # trackers.extend(trackerlist('cat', 'default_no_mlp', None, 'default_no_mlp'))
+
+    # trackers.extend(trackerlist('cat', 'default_init_prob', None, 'default'))
+    # trackers.extend(trackerlist('cat', 'default_replace_prob', None, 'default_replace_prob'))
+    # trackers.extend(trackerlist('cat', 'default_update_prob', None, 'default_update_prob'))
+
+    # trackers.extend(trackerlist('cat', 'ctp', None, 'ctp'))  # CTP+SM
+    # trackers.extend(trackerlist('cat', 'ctp_update', None, 'ctp_update'))  # CTPu+SM #default_prob_match
+
+    # trackers.extend(trackerlist('DiMP', 'super_dimp', range(0, 5), 'SuperDiMP'))  # nfs  #(1, 3)
+    # trackers.extend(trackerlist('cat', 'default', None, 'SuperDiMP+CTP'))
+    # trackers.extend(trackerlist('cat', 'default_update_prob', None, 'SuperDiMP+CTPu'))
+    trackers.extend(trackerlist('cat', 'ctp_update', None, 'CAT'))
+    # trackers.extend(trackerlist('cat', 'ctp', None, 'SuperDiMP+CTP+SM'))
+
+    # trackers.extend(trackerlist('ToMP', 'tomp50', None, 'ToMP50'))
+    # trackers.extend(trackerlist('cat', 'ca_tomp_match', None, 'CAT++'))
+
+    return trackers
+
+
+# --Prompt Tracking--###################################################################
+def analysis_PrompT():
+    trackers = []
+
+    # SuperDiMP as baseline
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_default', None, 'prompt_prob_default'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_init', None, 'prompt_prob_init'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_update', None, 'prompt_prob_update'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_replace', None, 'prompt_prob_replace'))  # otb nfs lasot
+
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_nohan', None, 'prompt_prob_nohan'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_nohan_update', None, 'prompt_prob_nohan_update'))  # otb nfs lasot
+
+    # distance
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_fixed_dis', None, 'prompt_prob_fixed_dis'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_dynamic_dis', None, 'prompt_prob_dynamic_dis'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_update_dis', None, 'prompt_prob_dis'))  # otb nfs lasot  #initial
+
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_dis3_noaverage', None, 'prompt_prob_dis3_noaverage'))  # otb  nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_dis3', None, 'prompt_prob_dis3'))  # otb  nfs lasot
+
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_dis5', None, 'prompt_prob_dis5'))  # otb  nfs lasot
+
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_update', None, 'SuperDiMP+CPE'))  # otb nfs lasot
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_update_dis', None, 'SuperDiMP+CPE+PCM'))  # otb nfs lasot
+
+    # down sampling bilinear interp
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_update', None, 'CPE_bi_mlp'))
+
+    # patch embedding
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_add', None, 'CPE_pe_add'))
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_cat', None, 'CPE_pe_cat'))
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_att', None, 'CPE_pe_att'))
+    # trackers.extend(trackerlist('prompt', 'prompt_prob_mlp', None, 'CPE_pe_mlp'))
+
+    # tomp50 as baseline
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_init', None, 'pro_tomp50_init'))
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_default', None, 'pro_tomp50_default'))
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_update', None, 'pro_tomp50_update'))
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_replace', None, 'pro_tomp50_replace'))
+
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_dis', None, 'pro_tomp50_dis')) #update
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_dis3', None, 'pro_tomp50_dis3')) #update
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_dis5', None, 'pro_tomp50_dis5')) #update
+
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_update', None, 'ToMP50+CPE'))
+    # trackers.extend(trackerlist('prompt', 'pro_tomp50_dis', None, 'ToMP50+CPE+PCM'))
+
+    return trackers
+
+# -----------------------------------------------------------------------------------------------------------
+
+# --published trackers------------------------
+# trackers = analysis_VSLT()...
 # trackers = analysis_OUPT()
 # trackers = analysis_RVT()
 # trackers = analysis_EnDiMP()
-trackers = analysis_FuDiMP()
+# trackers = analysis_FuDiMP()
+# trackers = analysis_CAT()
+##########################################
+trackers = analysis_PrompT()
+# trackers = analysis_test()
 
 # --plot results-- ##############################################################################
-# dataset = get_dataset('otb')
-# plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'),
-#              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
-# #
 # dataset = get_dataset('nfs')
 # plot_results(trackers, dataset, 'NFS', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 #
-# dataset = get_dataset('uav')
-# plot_results(trackers, dataset, 'UAV', merge_results=True, plot_types=('success', 'prec'),
+# dataset = get_dataset('otb')
+# plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
-
-dataset = get_dataset('lasot')
-plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec'),
-             skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
-
+#
+# dataset = get_dataset('lasot')
+# plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'norm_prec', 'prec'),
+#              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 
 # dataset = get_dataset('lasot_extension_subset')
 # plot_results(trackers, dataset, 'LaSOTExtSub', merge_results=True, plot_types=('success', 'prec'),
+#              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
+
+# dataset = get_dataset('uav')
+# plot_results(trackers, dataset, 'UAV', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 
 # dataset = get_dataset('tpl')  # tpl tpl_nootb
@@ -307,17 +391,14 @@ plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('succes
 ##################################################################################
 
 # --print tables-- ##############################################################################
-# dataset = get_dataset('otb')
-# print_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec', 'norm_prec', 'fps'))
-#
 # dataset = get_dataset('nfs')
 # print_results(trackers, dataset, 'NFS', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
 #
-# dataset = get_dataset('uav')
-# print_results(trackers, dataset, 'UAV', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
-#
-# dataset = get_dataset('lasot')
-# print_results(trackers, dataset, 'LaSOT', merge_results=False, plot_types=('success', 'prec', 'norm_prec'))
+# dataset = get_dataset('otb')
+# print_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec', 'norm_prec', 'fps'))
+
+dataset = get_dataset('lasot')
+print_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
 ##################################################################################################
 
 # --print per-sequence results-- ##############################################################
@@ -327,4 +408,3 @@ plot_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('succes
 # print_per_sequence_results(trackers, dataset, 'LaSOT', merge_results=True, filter_criteria=filter_criteria,
 #                            force_evaluation=False)
 ######################################################################################
-

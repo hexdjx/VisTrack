@@ -67,7 +67,7 @@ def sample_target(im, target_bb, search_area_factor, output_sz=None, mask=None):
         return im_crop_padded, 1.0, mask_crop_padded
 
 
-# for d3s use
+# for d3s use ---------------------------------------------------------------------
 def sample_target_seg(im, target_bb, search_area_factor, output_sz=None, pad_val=None):
     """ Extracts a square crop centered at target_bb box, of area search_area_factor^2 times target_bb area
 
@@ -121,8 +121,11 @@ def sample_target_seg(im, target_bb, search_area_factor, output_sz=None, pad_val
         return im_crop_padded, 1.0
 
 
+# ---------------------------------------------------------------------------------
+
+
 def transform_image_to_crop(box_in: torch.Tensor, box_extract: torch.Tensor, resize_factor: float,
-                            crop_sz: torch.Tensor) -> torch.Tensor:
+                            crop_sz: torch.Tensor, normalize=False) -> torch.Tensor:
     """ Transform the box co-ordinates from the original image co-ordinates to the co-ordinates of the cropped image
     args:
         box_in - the box for which the co-ordinates are to be transformed
@@ -141,10 +144,14 @@ def transform_image_to_crop(box_in: torch.Tensor, box_extract: torch.Tensor, res
     box_out_wh = box_in[2:4] * resize_factor
 
     box_out = torch.cat((box_out_center - 0.5 * box_out_wh, box_out_wh))
-    return box_out
+
+    if normalize:
+        return box_out / crop_sz[0]
+    else:
+        return box_out
 
 
-def jittered_center_crop(frames, box_extract, box_gt, search_area_factor, output_sz, masks=None):
+def jittered_center_crop(frames, box_extract, box_gt, search_area_factor, output_sz, masks=None, normalize=False):
     """ For each frame in frames, extracts a square crop centered at box_extract, of area search_area_factor^2
     times box_extract area. The extracted crops are then resized to output_sz. Further, the co-ordinates of the box
     box_gt are transformed to the image crop co-ordinates
@@ -175,7 +182,7 @@ def jittered_center_crop(frames, box_extract, box_gt, search_area_factor, output
     crop_sz = torch.Tensor([output_sz, output_sz])
 
     # find the bb location in the crop
-    box_crop = [transform_image_to_crop(a_gt, a_ex, rf, crop_sz)
+    box_crop = [transform_image_to_crop(a_gt, a_ex, rf, crop_sz, normalize=normalize)
                 for a_gt, a_ex, rf in zip(box_gt, box_extract, resize_factors)]
 
     return frames_crop, box_crop, masks_crop
@@ -701,7 +708,7 @@ def crop_target_proposals(im, anno, output_sz=128):
     return im_crop_padded
 
 
-####################################################
+# generate pos/neg target bounding box ------------------------------------------------------
 def bbox_clip(bbox, boundary, min_sz=10):
     """boundary img.shape (H,W)"""
     bbox[2:] = bbox[:2] + bbox[2:]
@@ -762,3 +769,4 @@ def perturb_target_box(box, output_sz, max_iou=0.3, sigma_factor=0.5):
             boxs.append(boxs[1])
 
     return torch.stack(boxs, dim=0)
+# ----------------------------------------------------------------------------

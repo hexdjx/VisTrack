@@ -1,8 +1,15 @@
+import sys
+
 class EnvironmentSettings:
     def __init__(self):
         # Base directory for saving network checkpoints.
-        self.workspace_dir = '/media/hexdjx/907856427856276E/' # linux
-        # self.workspace_dir = 'D:/Tracking/Datasets/'  # windows
+        if sys.platform == 'linux':
+            # linux path
+            self.workspace_dir = '/home/ad/datasets/'  # linux /media/dell/A5388FC7CFA41BE5/ /home/ad/datasets/
+
+        else:  # 'win32'
+            # win path
+            self.workspace_dir = 'D:/Tracking/Datasets/'  # windows
 
         self.tensorboard_dir = self.workspace_dir + 'tensorboard/'    # Directory for tensorboard files.
         self.pretrained_networks = self.workspace_dir + 'networks/'

@@ -3,42 +3,48 @@ from pytracking.evaluation import get_dataset, trackerlist
 
 # @author Xuedong He
 
-# --CTP-- ######################################################################
-def ctp_test():
+def exp_test():
+
+    trackers = trackerlist('prompt', 'pro_tomp50')
+    # dataset = get_dataset('otb')
+    # dataset = get_dataset('nfs')
+    dataset = get_dataset('lasot')
+
+    # dataset = get_dataset('otb', 'nfs')
+    # dataset = get_dataset('otb', 'nfs', 'lasot')
+
+    # dataset = get_dataset('trackingnet')
+
+    return trackers, dataset
+
+
+# --CAT-- ######################################################################
+def cat_test():
 
     # ablation analysis
 
     # Color target probability
-    # trackers = trackerlist('ctp', 'default_no')  # no mlp
-    # trackers = trackerlist('ctp', 'default')
-    # trackers = trackerlist('ctp', 'default_64')
-    # trackers = trackerlist('ctp', 'default_mean')
+    # trackers = trackerlist('cat', 'default_no')  # no mlp
+    # trackers = trackerlist('cat', 'default')
+    # trackers = trackerlist('cat', 'default_64')
+    # trackers = trackerlist('cat', 'default_mean')
 
-    # trackers = trackerlist('ctp', 'default_init_prob') + \
-    #            trackerlist('ctp', 'default_update_prob') + \
-    #            trackerlist('ctp', 'default_replace_prob')
+    # trackers = trackerlist('cat', 'default_init_prob') + \
+    #            trackerlist('cat', 'default_update_prob') + \
+    #            trackerlist('cat', 'default_replace_prob')
 
     # score matching
-    # trackers = trackerlist('ctp', 'default_match') + \
-    #            trackerlist('ctp', 'default_match_replace') + \
-    #            trackerlist('ctp', 'default_prob_match')
+    # trackers = trackerlist('cat', 'default_match') + \
+    #            trackerlist('cat', 'default_match_replace') + \
+    #            trackerlist('cat', 'default_prob_match')
 
 
     # dataset = get_dataset('otb', 'nfs', 'lasot')
     # dataset = get_dataset('nfs')
     # dataset = get_dataset('lasot')
 
-    trackers = trackerlist('keep_track_c', 'default')
-
-    # trackerlist('ctp', 'default_prob_match')
-    dataset = get_dataset('otb', 'nfs', 'uav')
-    # dataset = get_dataset('trackingnet')
-
-    # test got-10k
-    # trackers = trackerlist('ctp', 'default_update', range(3)) #+ \
-    # trackers = trackerlist('keep_track_c', 'default', range(3))# + \
-
-    # dataset = get_dataset('got10k_test')
+    trackers = trackerlist('cat', 'default_prob_match')
+    dataset = get_dataset('trackingnet')
 
     return trackers, dataset
 

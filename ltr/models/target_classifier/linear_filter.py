@@ -6,6 +6,8 @@ import ltr.models.layers.filter as filter_layer
 import math
 from ltr.models.layers.normalization import InstanceL2Norm
 import ltr.models.target_classifier.features as clf_features  # my add
+from ltr.models.utils import conv_bn_relu
+import torch.nn.functional as F
 
 
 class LinearFilter(nn.Module):
@@ -136,6 +138,8 @@ class LinearFilter(nn.Module):
 
         return scores
 
+
+# trdimp-------------------------------------------------------
 class TransLinearFilter(nn.Module):
     """Target classification filter module.
     args:
@@ -144,7 +148,8 @@ class TransLinearFilter(nn.Module):
         filter_optimizer:  Filter optimizer module.
         feature_extractor:  Feature extractor module applied to the input backbone features."""
 
-    def __init__(self, filter_size, filter_initializer, filter_optimizer=None, feature_extractor=None, transformer=None):
+    def __init__(self, filter_size, filter_initializer, filter_optimizer=None, feature_extractor=None,
+                 transformer=None):
         super().__init__()
 
         self.filter_size = filter_size
@@ -167,7 +172,7 @@ class TransLinearFilter(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def forward(self, train_feat, test_feat, train_label, train_bb, *args, **kwargs):
+    def forward(self, train_feat, test_feat, train_label, test_label, train_bb, *args, **kwargs):
         """Learns a target classification filter based on the train samples and return the resulting classification
         scores on the test samples.
         The forward function is ONLY used for training. Call the individual functions during tracking.
@@ -194,7 +199,7 @@ class TransLinearFilter(nn.Module):
         test_feat = self.extract_classification_feat(test_feat, num_sequences)
 
         #
-        encoded_feat, decoded_feat = self.transformer(train_feat, test_feat, train_label)
+        encoded_feat, decoded_feat = self.transformer(train_feat, test_feat, train_label)#, test_label)
 
         encoded_feat = encoded_feat.reshape(-1, num_sequences, *encoded_feat.shape[-3:])
         decoded_feat = decoded_feat.reshape(-1, num_sequences, *decoded_feat.shape[-3:])
@@ -202,14 +207,7 @@ class TransLinearFilter(nn.Module):
         # Train filter
         filter, filter_iter, losses = self.get_filter(encoded_feat, train_bb, *args, **kwargs)
         # Classify samples using all return filters
-        test_scores = [self.classify(f, decoded_feat) for f in filter_iter]    ## test_feat
-
-        '''
-        # Train filter
-        filter, filter_iter, losses = self.get_filter(train_feat, train_bb, *args, **kwargs) 
-        # Classify samples using all return filters
-        test_scores = [self.classify(f, test_feat) for f in filter_iter]    ## test_feat
-        '''
+        test_scores = [self.classify(f, decoded_feat) for f in filter_iter]  ## test_feat
 
         return test_scores
 
@@ -277,6 +275,9 @@ class TransLinearFilter(nn.Module):
         scores = filter_layer.apply_filter(test_feat, filter_weights)
 
         return scores
+
+
+# Color Attention Tracking------------------------------------------------------------
 class ProbLinearFilter(nn.Module):
     """Target classification filter module.
     args:
@@ -305,14 +306,14 @@ class ProbLinearFilter(nn.Module):
         else:
             in_dim = 3
 
-        prob_feature_extractor = clf_features.prob_encoder_mlp(in_dim=in_dim, hid_dim=16)
-        # prob_feature_extractor = clf_features.prob_encoder_conv(in_dim=in_dim)
-        # prob_feature_extractor = clf_features.prob_encoder_conv_gn(in_dim=in_dim)
+        prob_feature_extractor = clf_features.prob_encoder_mlp(in_dim=in_dim, hid_dim=16) # 64
 
         fuse_conv = nn.Sequential(nn.Conv2d(out_dim, out_dim, kernel_size=1, padding=0, bias=False),
                                   InstanceL2Norm(scale=norm_scale))
 
         self.feature_extractor = nn.Sequential(clf_feature_extractor, prob_feature_extractor, fuse_conv)
+        # self.feature_extractor = nn.Sequential(clf_feature_extractor, fuse_conv) # for test mlp
+
         ########################################################
 
         # Init weights
@@ -366,6 +367,10 @@ class ProbLinearFilter(nn.Module):
             output = self.feature_extractor[2](
                 self.feature_extractor[0](feat) * torch.mean(self.feature_extractor[1](prob), dim=1, keepdim=True))
 
+            # for test mlp
+            # output = self.feature_extractor[1](
+            #     self.feature_extractor[0](feat) * torch.mean(prob, dim=1, keepdim=True))
+
         if num_sequences is None:
             return output
 
@@ -399,3 +404,4 @@ class ProbLinearFilter(nn.Module):
             losses = None
 
         return weights, weights_iter, losses
+

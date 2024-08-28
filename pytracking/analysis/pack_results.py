@@ -88,6 +88,5 @@ def pack_got10k_results(tracker_name, param_name, output_name):
     shutil.rmtree(output_path)
 
 
-
-#pack_trackingnet_results('fudimp', 'fudimp_apce', None, 'FuDiMP++')
-pack_got10k_results('fudimp', 'fudimp_apce', 'FuDiMP++')
+pack_trackingnet_results('cat', 'tomp_match', None, 'tomp_match')
+# pack_got10k_results('prompt', 'pro_tomp50', 'ProToMP50')

@@ -216,21 +216,21 @@ def get_iounet_box(sz):
 
 
 if __name__ == '__main__':
-    fname = 'D:/Tracking/Datasets/OTB100/Basketball/img/0001.jpg'
+    fname = '/home/ad/datasets/OTB100/Basketball/img/0001.jpg'
     img = cv.cvtColor(cv.imread(fname), cv.COLOR_BGR2RGB)
     gt_state = torch.Tensor([198, 214, 34, 81])
     crops, boxes = prutils.target_image_crop([img], [gt_state], [gt_state], 5, 288)
 
-    # im_crop = crops[0]
-    # pred_s = boxes[0]
-    # tl = tuple(map(int, [pred_s[0], pred_s[1]]))
-    # br = tuple(map(int, [pred_s[0] + pred_s[2], pred_s[1] + pred_s[3]]))
-    #
-    # cv.rectangle(im_crop, tl, br, (0, 255, 0), 2)
-    #
-    # plt.figure()
-    # plt.imshow(im_crop)
-    # plt.show()
+    im_crop = crops[0]
+    pred_s = boxes[0]
+    tl = tuple(map(int, [pred_s[0], pred_s[1]]))
+    br = tuple(map(int, [pred_s[0] + pred_s[2], pred_s[1] + pred_s[3]]))
+
+    cv.rectangle(im_crop, tl, br, (0, 255, 0), 2)
+
+    plt.figure()
+    plt.imshow(im_crop)
+    plt.show()
 
     # output_window = dcf.hann2d(torch.tensor([288, 288]).long(), centered=True)
     # plt.figure()
@@ -239,16 +239,16 @@ if __name__ == '__main__':
 
     # mesh_score(output_window.squeeze().numpy())
 
-    get_target_prob(crops[0], boxes[0])
-    bbox2mask(boxes[0])
-
-    target_box = get_iounet_box(gt_state[2:])
-    target_label = prutils.gaussian_label_function(target_box.view(-1, 4),
-                                                   1 / 4,
-                                                   1,
-                                                   18, 18 * 16)
-
-    plt.figure()
-    plt.imshow(target_label.permute(1, 2, 0).numpy())
-    plt.show()
-    mesh_score(target_label.squeeze().numpy())
+    # get_target_prob(crops[0], boxes[0])
+    # bbox2mask(boxes[0])
+    #
+    # target_box = get_iounet_box(gt_state[2:])
+    # target_label = prutils.gaussian_label_function(target_box.view(-1, 4),
+    #                                                1 / 4,
+    #                                                1,
+    #                                                18, 18 * 16)
+    #
+    # plt.figure()
+    # plt.imshow(target_label.permute(1, 2, 0).numpy())
+    # plt.show()
+    # mesh_score(target_label.squeeze().numpy())

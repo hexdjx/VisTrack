@@ -124,7 +124,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
             print(e)
             return
 
-    ##################################################
+    ########################################################################################
     # my add
     # plot precision
     def _show_precision(positions, ground_truth, title, max_threshold=50):
@@ -175,12 +175,12 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, visdom_info=None)
         # plt.ylabel('success')
         # plt.show()
 
-    if debug:
+    if not debug:
         predict_bb = np.array(output['target_bbox'])
         _show_precision(predict_bb, seq.ground_truth_rect, seq.name)
         _show_success(predict_bb, seq.ground_truth_rect, seq.name)
 
-    ##################################################
+    #######################################################################################
 
     sys.stdout.flush()
 

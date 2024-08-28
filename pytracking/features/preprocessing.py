@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def numpy_to_torch(a: np.ndarray):
@@ -186,7 +185,7 @@ def sample_target_patch(im: torch.Tensor, pos: torch.Tensor, target_sz: torch.Te
     return im_patch, patch_coord
 
 
-# --ctp-- -----------------------------------------------------------------------
+# --cat-- -----------------------------------------------------------------------
 def patch_prob_transformed(im_patch, target_prob, transforms, is_mask=False):
     """Extract transformed image samples.
     args:

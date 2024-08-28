@@ -146,33 +146,4 @@ class MultiResolutionExtractor(ExtractorBase):
 
         return feature_map
 
-    # my add -----------------------------------------------------------------------
-    def extract_transformed_SE(self, im, pos, scale, image_sz, transforms):
-        """Extract features from a set of transformed image samples.
-        args:
-            im: Image.
-            pos: Center position for extraction.
-            scale: Image scale to extract features from.
-            image_sz: Size to resize the image samples to before extraction.
-            transforms: A set of image transforms to apply.
-        """
 
-        # Get image patche
-        im_patch, _ = sample_patch(im, pos, scale * image_sz, image_sz)
-
-        # import matplotlib.pyplot as plt
-        # import numpy as np
-        # a = im_patch.squeeze(0).permute(1, 2, 0).numpy()
-        # b = np.min(a)
-        # a = (a-np.min(a))/(np.max(a)-np.min(a))
-        # plt.figure(2)
-        # plt.imshow(a)
-        # plt.show()
-
-        # Apply transforms
-        im_patches = torch.cat([T(im_patch) for T in transforms])
-        # Compute features
-        feature_map = TensorList([f.get_feature(im_patches)[0] for f in self.features]).unroll() # rectified
-
-        return feature_map
-    # --------------------------------------------------------------------------

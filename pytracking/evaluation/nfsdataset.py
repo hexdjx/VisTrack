@@ -47,7 +47,7 @@ class NFSDataset(BaseDataset):
         # refer to got10k
         ground_truth_rect = load_text(str(anno_path), delimiter=None, dtype=str)
         ground_truth_rect = ground_truth_rect[:, 1:5].astype(float)  # [left, top, right, bottom]
-        ground_truth_rect[:, 2:] = ground_truth_rect[:, 2:] - ground_truth_rect[:, :2] + 1 # [left, top, width, height]
+        ground_truth_rect[:, 2:] = ground_truth_rect[:, 2:] - ground_truth_rect[:, :2]# + 1# [left, top, width, height]
         # handle inconsistent lengths
         if not len(frames) == len(ground_truth_rect):
             if abs(len(ground_truth_rect) / len(frames) - 8) < 1:

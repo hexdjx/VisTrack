@@ -1,18 +1,19 @@
+import sys
 from pytracking.evaluation.environment import EnvSettings
 
 
 def local_env_settings():
     settings = EnvSettings()
 
-    # linux path
-    # base_path = '/home/hexdjx/code/Tracking/'
-    # dataset_path = '/media/hexdjx/907856427856276E/'  # linux path
-    # settings.network_path = dataset_path + 'networks'
+    if sys.platform == 'linux':
+        # linux path
+        base_path = '/home/ad/code/VisTrack/'
+        dataset_path = '/home/ad/datasets/'  # /media/dell/A5388FC7CFA41BE5/
+    else:  # 'win32'
+        # win path
+        base_path = 'D:/Tracking/VisTrack/'
+        dataset_path = 'D:/Tracking/Datasets/'
 
-    # win path
-    base_path = 'D:/Tracking/VisTrack/'
-    dataset_path = 'D:/Tracking/Datasets/'
-    
     settings.network_path = dataset_path + 'networks'
     settings.dataspec_path = base_path + '/ltr/data_specs'
 
@@ -27,16 +28,16 @@ def local_env_settings():
     settings.trackingnet_path = dataset_path + 'TrackingNet'
     settings.uav_path = dataset_path + 'UAV123'
     settings.youtubevos_dir = dataset_path + 'YouTubeVOS/2018'
-    settings.vot18_path = dataset_path + 'VOT2018'
     settings.vot_path = dataset_path + 'VOT2018'
 
     # result paths
-    settings.base_result_path = base_path + '/pytracking/results/'
-    settings.result_plot_path = base_path + '/pytracking/results/plots/'
-    settings.results_path = base_path + '/pytracking/results/tracking_results/'
-    settings.segmentation_path = base_path + '/pytracking/results/segmentation_results/'
-    settings.tn_packed_results_path = base_path + '/pytracking/results/TrackingNet/'
-    settings.got_results_path = base_path + '/pytracking/results/GOT-10k/'
-    settings.vot18_results_path = base_path + '/pytracking/results/VOT2018/'
+    settings.base_result_path = base_path + 'pytracking/results/'
+    settings.result_plot_path = base_path + 'pytracking/results/plots/'
+    settings.results_path = base_path + 'pytracking/results/tracking_results/'
+    settings.segmentation_path = base_path + 'pytracking/results/segmentation_results/'
+    settings.tn_packed_results_path = base_path + 'pytracking/results/TrackingNet/'
+    settings.got_results_path = base_path + 'pytracking/results/GOT-10k/'
+    settings.vot18_results_path = base_path + 'pytracking/results/VOT2018/'
+    settings.vot20_results_path = base_path + 'pytracking/results/VOT2020/'
 
     return settings

@@ -251,7 +251,28 @@ class ATOM(BaseTracker):
 
         # Compute scores
         scores_raw = self.apply_filter(test_x)
+
+        # import matplotlib.pyplot as plt
+        # from mpl_toolkits.mplot3d import Axes3D
+        # import numpy as np
+        #
+        # s = scores_raw[0].squeeze().cpu().clone().detach().numpy()
+        # [x, y] = np.shape(s)
+        #
+        # fig = plt.figure(20)
+        # ax = Axes3D(fig)
+        # X = np.arange(0, x)
+        # Y = np.arange(0, y)
+        # X, Y = np.meshgrid(X, Y)
+        # Z = s
+        # surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap='rainbow', linewidth=0,
+        #                        antialiased=False)  # rainbow coolwarm
+        # plt.axis('off')
+        # # plt.show()
+        # plt.savefig('mesh1.png', format='png', dpi=300)
+
         translation_vec, scale_ind, s, flag = self.localize_target(scores_raw)
+        scale_ind = scale_ind.cpu()
 
         # Update position and scale
         if flag != 'not_found':

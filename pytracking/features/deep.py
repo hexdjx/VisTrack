@@ -157,6 +157,66 @@ class ATOMResNet18(MultiFeatureBase):
             return TensorList([output_features[layer] for layer in self.output_layers])
 
 
+class CornerResNet18(MultiFeatureBase):
+    """ResNet18 feature with the ATOM IoUNet.
+    args:
+        output_layers: List of layers to output.
+        net_path: Relative or absolute net path (default should be fine).
+        use_gpu: Use GPU or CPU.
+    """
+
+    def __init__(self, output_layers=('layer3',), net_path='atom_corner', use_gpu=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.output_layers = list(output_layers)
+        self.use_gpu = use_gpu
+        self.net_path = net_path
+
+    def initialize(self):
+        self.net = load_network(self.net_path)
+
+        if self.use_gpu:
+            self.net.cuda()
+        self.net.eval()
+
+        self.corr_module = self.net.corr_module
+        self.bb_regressor = self.net.bb_regressor
+
+        self.layer_stride = {'conv1': 2, 'layer1': 4, 'layer2': 8, 'layer3': 16, 'layer4': 32, 'classification': 16,
+                             'fc': None}
+        self.layer_dim = {'conv1': 64, 'layer1': 64, 'layer2': 128, 'layer3': 256, 'layer4': 512, 'classification': 256,
+                          'fc': None}
+
+        if isinstance(self.pool_stride, int) and self.pool_stride == 1:
+            self.pool_stride = [1] * len(self.output_layers)
+
+        self.mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, -1, 1, 1)
+        self.std = torch.Tensor([0.229, 0.224, 0.225]).view(1, -1, 1, 1)
+
+    def dim(self):
+        return TensorList([self.layer_dim[l] for l in self.output_layers])
+
+    def stride(self):
+        return TensorList([s * self.layer_stride[l] for l, s in zip(self.output_layers, self.pool_stride)])
+
+    def extract(self, im: torch.Tensor):
+        im = im / 255
+        im -= self.mean
+        im /= self.std
+
+        if self.use_gpu:
+            im = im.cuda()
+
+        with torch.no_grad():
+            output_features = self.net.extract_features(im, self.output_layers)
+
+        # Store the raw resnet features which are input to iounet
+        self.iounet_backbone_features = TensorList(
+            [output_features[layer].clone() for layer in self.output_layers])
+
+        return TensorList([output_features[layer] for layer in self.output_layers])
+
+
 # d3s / segm-----------------------------------------------------------------
 class ATOMResNet50(MultiFeatureBase):
     """ResNet18 feature with the ATOM IoUNet.

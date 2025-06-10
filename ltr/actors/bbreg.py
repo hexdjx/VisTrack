@@ -31,39 +31,3 @@ class AtomActor(BaseActor):
         return loss, stats
 
 
-# --corner head---------------------------------------------
-class CornerActor(BaseActor):
-    """ Actor for training the scale estimation module"""
-
-    def __call__(self, data):
-        """
-        args:
-            data - The input data, should contain the fields 'train_images', 'test_images', 'train_anno', 'test_anno'
-
-        returns:
-            loss    - the training loss
-            states  -  dict containing detailed losses
-        """
-        # Run network to obtain bbox prediction for each test image
-        corner_pred = self.net(data['train_images'], data['test_images'], data['train_anno'])
-
-        # get groundtruth
-        bbox_gt = data['test_anno'].squeeze(0)  # (x1,y1,w,h)
-
-        bbox_gt_xyxy = bbox_gt.clone()
-        bbox_gt_xyxy[:, 2:] += bbox_gt_xyxy[:, :2]  # (x1,y1,x2,y2)
-
-        giou_loss = self.objective['giou'](corner_pred, bbox_gt_xyxy)
-        l1_loss = self.objective['l1'](corner_pred, bbox_gt_xyxy)
-        loss = 2.0 * giou_loss + 5.0 * l1_loss
-
-        stats = {
-            'Loss/total': loss.item(),
-            'Loss/l1_loss': l1_loss.item(),
-            'Loss/giou_loss': giou_loss.item()
-        }
-
-        return loss, stats
-# ----------------------------------------------------------
-
-

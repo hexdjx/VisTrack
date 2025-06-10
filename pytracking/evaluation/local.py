@@ -11,8 +11,8 @@ def local_env_settings():
         dataset_path = '/home/ad/datasets/'  # /media/dell/A5388FC7CFA41BE5/
     else:  # 'win32'
         # win path
-        base_path = 'D:/Tracking/VisTrack/'
-        dataset_path = 'D:/Tracking/Datasets/'
+        base_path = 'E:/code/Tracking/VisTrack/'
+        dataset_path = 'E:/datasets/'
 
     settings.network_path = dataset_path + 'networks'
     settings.dataspec_path = base_path + '/ltr/data_specs'

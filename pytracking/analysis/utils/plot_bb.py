@@ -6,7 +6,7 @@ from pytracking.evaluation import get_dataset
 
 
 # color attention tracking
-def plot_ctp(base_path):
+def plot_cat(base_path):
     # green yellow red  # B G R
     _tracker_disp_colors = {1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
 

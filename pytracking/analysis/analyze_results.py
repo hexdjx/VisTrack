@@ -359,9 +359,7 @@ def analysis_PrompT():
 # trackers = analysis_EnDiMP()
 # trackers = analysis_FuDiMP()
 # trackers = analysis_CAT()
-##########################################
 trackers = analysis_PrompT()
-# trackers = analysis_test()
 
 # --plot results-- ##############################################################################
 # dataset = get_dataset('nfs')
@@ -370,6 +368,10 @@ trackers = analysis_PrompT()
 #
 # dataset = get_dataset('otb')
 # plot_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'),
+#              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
+#
+# dataset = get_dataset('tnl2k')
+# plot_results(trackers, dataset, 'TNL2K', merge_results=True, plot_types=('success', 'prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05, exclude_invalid_frames=False)
 #
 # dataset = get_dataset('lasot')
@@ -391,15 +393,24 @@ trackers = analysis_PrompT()
 ##################################################################################
 
 # --print tables-- ##############################################################################
-# dataset = get_dataset('nfs')
-# print_results(trackers, dataset, 'NFS', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
-#
-# dataset = get_dataset('otb')
-# print_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec', 'norm_prec', 'fps'))
-
 dataset = get_dataset('lasot')
 print_results(trackers, dataset, 'LaSOT', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
-##################################################################################################
+
+dataset = get_dataset('nfs')
+# print_results(trackers, dataset, 'NFS', merge_results=True, plot_types=('success', 'prec'))
+#
+dataset = get_dataset('otb')
+print_results(trackers, dataset, 'OTB', merge_results=True, plot_types=('success', 'prec'))
+
+dataset = get_dataset('tnl2k')
+print_results(trackers, dataset, 'TNL2K', merge_results=True, plot_types=('success', 'prec'))
+
+# # dataset = get_dataset('uav')
+# # print_results(trackers, dataset, 'UAV', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
+#
+dataset = get_dataset('lasot_extension_subset')
+print_results(trackers, dataset, 'LaSOTExtSub', merge_results=True, plot_types=('success', 'prec', 'norm_prec'))
+#################################################################################################
 
 # --print per-sequence results-- ##############################################################
 # Print per sequence results for all sequences

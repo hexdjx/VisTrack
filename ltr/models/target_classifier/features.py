@@ -259,93 +259,8 @@ class AWFFatt(nn.Module):
         fused_out = self.final_conv(fused_out)
         return fused_out
 
-
-# --ProbFusion-- ###########################################################
-class ResBlock_gn(nn.Module):
-
-    def __init__(self, inplanes, planes, stride=1):
-        super(ResBlock_gn, self).__init__()
-
-        self.conv1 = conv_gn_relu(inplanes, planes, stride=stride)
-        self.conv2 = conv_gn(planes, planes)
-        if inplanes != planes:
-            self.downsample = conv_gn(inplanes, planes, kernel_size=1, stride=stride, padding=0)
-        else:
-            self.downsample = None
-        self.relu = nn.ReLU(inplace=True)
-
-    def forward(self, x):
-
-        out = self.conv2(self.conv1(x))
-
-        if self.downsample is not None:
-            x = self.downsample(x)
-            out += x
-
-        out = self.relu(out)
-        return out
-
-
-class ResBlock(nn.Module):
-
-    def __init__(self, inplanes, planes, stride=1):
-        super(ResBlock, self).__init__()
-
-        self.conv1 = conv_bn_relu(inplanes, planes, kernel_size=3, stride=stride, padding=1)
-        self.conv2 = conv_bn(planes, planes, kernel_size=3, stride=1, padding=1)
-        self.relu = nn.ReLU(inplace=True)
-
-        if inplanes != planes:
-            self.downsample = conv_bn(inplanes, planes, kernel_size=1, stride=stride, padding=0)
-        else:
-            self.downsample = None
-
-    def forward(self, x):
-
-        out = self.conv2(self.conv1(x))
-
-        if self.downsample is not None:
-            x = self.downsample(x)
-            out += x
-
-        out = self.relu(out)
-
-        return out
-
-
-def prob_encoder_conv(in_dim=3, hid_dim=64, out_dim=512, num_blocks=2):
-    """Construct a network block based on the Bottleneck block used in ResNet."""
-
-    feat_layers = [conv_bn_relu(in_dim, hid_dim, kernel_size=3, stride=2, padding=1),
-                   nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
-
-    for i in range(num_blocks):
-        planes = hid_dim * (i + 1)
-        feat_layers.append(ResBlock(planes, planes * 2, stride=2))
-
-    feat_layers.append(nn.Conv2d(hid_dim * 4, out_dim, kernel_size=1, bias=False))
-
-    return nn.Sequential(*feat_layers)
-
-
-def prob_encoder_conv_gn(in_dim=3, hid_dim=64, out_dim=512, num_blocks=2):
-    """Construct a network block based on the Bottleneck block used in ResNet."""
-
-    feat_layers = [conv_bn_relu(in_dim, hid_dim, kernel_size=3, stride=2, padding=1),
-                   nn.MaxPool2d(kernel_size=3, stride=2, padding=1)]
-
-    for i in range(num_blocks):
-        planes = hid_dim * (i + 1)
-        feat_layers.append(ResBlock_gn(planes, planes * 2, stride=2))
-
-    feat_layers.append(nn.Conv2d(hid_dim * 4, out_dim, kernel_size=1, bias=False))
-
-    return nn.Sequential(*feat_layers)
-
-
+# --CAT-- ###########################################################
 def prob_encoder_mlp(in_dim=3, hid_dim=16):
-    """Construct a network block based on the Bottleneck block used in ResNet."""
-
     feat_layers = [conv_bn_relu(in_dim, hid_dim, kernel_size=1, padding=0),
                    conv_bn_relu(hid_dim, hid_dim, kernel_size=1, padding=0),
                    conv_bn_relu(hid_dim, in_dim, kernel_size=1, padding=0)]
@@ -353,7 +268,32 @@ def prob_encoder_mlp(in_dim=3, hid_dim=16):
     return nn.Sequential(*feat_layers)
 
 
-# --ToMP improved--################################################################################
+# --prompt tracking-- ###########################################################
+def encoder_mlp(in_dim=3, hid_dim=16):
+    """Construct a network block based on the Bottleneck block used in ResNet."""
+    feat_layers = [conv_bn_relu(in_dim, hid_dim, kernel_size=1, padding=0),
+                   conv_bn_relu(hid_dim, hid_dim, kernel_size=1, padding=0),
+                   nn.Conv2d(hid_dim, 1, kernel_size=1),
+                   nn.Sigmoid()]
+
+    return nn.Sequential(*feat_layers)
+
+
+class PE_MLP(nn.Module):
+    def __init__(self, inplanes=3, planes=256, norm_scale=1.0,factor=4):
+        super(PE_MLP, self).__init__()
+        self.clf_conv = conv_bn_relu(factor * planes, planes)
+        self.pro_conv = conv_bn_relu(inplanes, planes, kernel_size=16, stride=16, padding=0)
+        self.att_mlp = encoder_mlp(256, 64)
+
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False),
+            InstanceL2Norm(scale=norm_scale))
+
+    def forward(self, feat, pro):
+        feat = self.clf_conv(feat) * self.att_mlp(self.pro_conv(pro))
+        return self.final_conv(feat)
+
 class SpatialAtt(nn.Module):
     def __init__(self):
         super().__init__()
@@ -384,207 +324,24 @@ class ChannelAtt(nn.Module):
     def forward(self, x):
         return self.fc(self.avg_pool(x))
 
-
-# Adaptively Attention Feature Fusion
-class AttFusion(nn.Module):
-    def __init__(self, in_dim=1024, out_dim=256, norm_scale=1.0, downsample=False):
-        super(AttFusion, self).__init__()
-
-        inter_dim = in_dim // 2
-        self.primary_conv = conv_bn_relu(in_dim, inter_dim, kernel_size=1, padding=0)
-
-        self.cheap_operation = nn.Sequential(
-            nn.Conv2d(inter_dim, inter_dim, 3, 1, 1, groups=inter_dim),
-            nn.BatchNorm2d(inter_dim),
-            nn.ReLU(inplace=True))
-
-        # compute attention weight
-        self.c_att1 = ChannelAtt()
-        self.c_att2 = ChannelAtt()
-
-        self.s_att1 = SpatialAtt()
-        self.s_att2 = SpatialAtt()
-
-        self.conv_fusion = conv_bn_relu(in_dim, inter_dim, kernel_size=1, padding=0)
-
-        self.downsample = downsample
-        if self.downsample:
-            self.downsample = conv_bn(in_dim, inter_dim, kernel_size=1, padding=0)
+# patch embedding with attention
+class PE_ATT(nn.Module):
+    def __init__(self, inplanes=3, planes=256, norm_scale=1.0):
+        super(PE_ATT, self).__init__()
+        self.clf_conv = conv_bn_relu(4 * planes, planes)  # mlp 2*planes att:planes
+        self.pro_conv = conv_bn_relu(inplanes, planes, kernel_size=16, stride=16, padding=0)
+        self.c_att = ChannelAtt(in_channel=planes)
+        self.s_att = SpatialAtt()
 
         self.final_conv = nn.Sequential(
-            nn.Conv2d(inter_dim, out_dim, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(2 * planes, 2 * planes, kernel_size=3, padding=1, bias=False),
             InstanceL2Norm(scale=norm_scale))
 
-    def forward(self, x):
-        x1 = self.primary_conv(x)
-        x2 = self.cheap_operation(x1)
+    def forward(self, feat, pro):
+        c_feat = self.clf_conv(feat) * self.c_att(self.pro_conv(pro))
+        s_feat = self.clf_conv(feat) * self.s_att(self.pro_conv(pro))
+        return self.final_conv(torch.cat((c_feat, s_feat), dim=1))
 
-        # feature fusion weight learning
-        c_w1 = self.c_att1(x1)
-        c_w2 = self.c_att2(x2)
-
-        c_w = torch.cat((c_w1, c_w2), dim=1)
-        c_w = F.softmax(c_w, dim=1)
-        # adaptive fusion
-        c_fusion = x1 * c_w[:, 0:1, :, :] + x2 * c_w[:, 1:2, :, :]
-
-        # spatial weight
-        s_w1 = self.s_att1(x1)
-        s_w2 = self.s_att2(x2)
-        s_w = torch.cat((s_w1, s_w2), dim=1)
-        s_w = F.softmax(s_w, dim=1)
-        s_fusion = x1 * s_w[:, 0:1, :, :] + x2 * s_w[:, 1:2, :, :]
-
-        x_fusion = torch.cat((c_fusion, s_fusion), dim=1)
-        fused_out = self.conv_fusion(x_fusion)
-
-        if self.downsample:
-            fused_out += self.downsample(x)  # with residual
-
-        fused_out = self.final_conv(fused_out)
-
-        return fused_out
-
-
-class AttFusionBlock(nn.Module):
-    def __init__(self, in_dim=1024, downsample=False):
-        super(AttFusionBlock, self).__init__()
-
-        inter_dim = in_dim // 2
-        self.primary_conv = conv_bn_relu(in_dim, inter_dim, kernel_size=1, padding=0)
-
-        self.cheap_operation = nn.Sequential(
-            nn.Conv2d(inter_dim, inter_dim, 3, 1, 1, groups=inter_dim),
-            nn.BatchNorm2d(inter_dim),
-            nn.ReLU(inplace=True))
-
-        # compute attention weight
-        self.c_att1 = ChannelAtt()
-        self.c_att2 = ChannelAtt()
-
-        self.s_att1 = SpatialAtt()
-        self.s_att2 = SpatialAtt()
-
-        self.conv_fusion = conv_bn_relu(in_dim, inter_dim, kernel_size=1, padding=0)
-
-        self.downsample = downsample
-        if self.downsample:
-            self.downsample = conv_bn(in_dim, inter_dim, kernel_size=1, padding=0)
-
-    def forward(self, x):
-        x1 = self.primary_conv(x)
-        x2 = self.cheap_operation(x1)
-
-        # feature fusion weight learning
-        c_w1 = self.c_att1(x1)
-        c_w2 = self.c_att2(x2)
-
-        c_w = torch.cat((c_w1, c_w2), dim=1)
-        c_w = F.softmax(c_w, dim=1)
-        # adaptive fusion
-        c_fusion = x1 * c_w[:, 0:1, :, :] + x2 * c_w[:, 1:2, :, :]
-
-        # spatial weight
-        s_w1 = self.s_att1(x1)
-        s_w2 = self.s_att2(x2)
-        s_w = torch.cat((s_w1, s_w2), dim=1)
-        s_w = F.softmax(s_w, dim=1)
-        s_fusion = x1 * s_w[:, 0:1, :, :] + x2 * s_w[:, 1:2, :, :]
-
-        x_fusion = torch.cat((c_fusion, s_fusion), dim=1)
-        fused_out = self.conv_fusion(x_fusion)
-
-        if self.downsample:
-            fused_out += self.downsample(x)  # with residual
-
-        return fused_out
-
-
-class AWFFattBlcok(nn.Module):
-    def __init__(self, in_dim=1024):
-        super(AWFFattBlcok, self).__init__()
-
-        inter_dim = in_dim // 2
-        self.primary_conv = conv_bn_relu(in_dim, inter_dim, kernel_size=1, padding=0, bias=True)
-
-        self.cheap_operation = nn.Sequential(
-            nn.Conv2d(inter_dim, inter_dim, 3, 1, 1, groups=in_dim // 2, bias=True),
-            nn.BatchNorm2d(inter_dim),
-            nn.ReLU(inplace=True))
-
-        # compute attention weight
-        self.weight1 = Spatial_Attention()
-        self.weight2 = Spatial_Attention()
-
-    def forward(self, x):
-        x1 = self.primary_conv(x)
-        x2 = self.cheap_operation(x1)
-
-        # feature fusion weight learning
-        weight1 = self.weight1(x1)
-        weight2 = self.weight2(x2)
-        weight_total = torch.cat((weight1, weight2), dim=1)
-        weight_total = F.softmax(weight_total, dim=1)
-
-        # adaptive fusion
-        fused_out = x1 * weight_total[:, 0:1, :, :] + x2 * weight_total[:, 1:2, :, :]
-
-        return fused_out
-
-
-class TargetEmbedding(nn.Module):
-
-    def __init__(self, input_dim=1024):
-        super().__init__()
-
-        self.prroi_pool = PrRoIPool2D(3, 3, 1 / 16)
-
-        self.conv = conv_bn_relu(input_dim, input_dim, kernel_size=3, stride=1, padding=0)
-
-        self.target_embedding = nn.Sequential(
-            nn.Linear(input_dim, input_dim // 2),
-            nn.ReLU(inplace=True),
-            nn.Linear(input_dim // 2, input_dim // 2),
-            nn.ReLU(inplace=True),
-            nn.Linear(input_dim // 2, 512)
-        )
-
-    def forward(self, feat, bbox):
-        batch_size = feat.size()[0]
-
-        # Add batch_index to rois
-        batch_index = torch.arange(batch_size, dtype=torch.float32).reshape(-1, 1).to(bbox.device)
-
-        bbox = bbox.reshape(-1, *bbox.shape[-2:])
-        num_bb_per_batch = bbox.shape[1]
-
-        # input proposals2 is in format xywh, convert it to x0y0x1y1 format
-        bbox_xyxy = torch.cat((bbox[:, :, 0:2], bbox[:, :, 0:2] + bbox[:, :, 2:4]), dim=2)
-
-        roi = torch.cat((batch_index.reshape(batch_size, -1, 1).expand(-1, num_bb_per_batch, -1), bbox_xyxy), dim=2)
-        roi = roi.reshape(-1, 5).to(bbox_xyxy.device)
-
-        out = self.prroi_pool(feat, roi)
-        out = self.conv(out)
-
-        out = self.target_embedding(out.view(batch_size * num_bb_per_batch, -1)).reshape(batch_size, num_bb_per_batch,
-                                                                                         -1)
-
-        return out
-
-
-class Res_CBAM(nn.Module):
-    def __init__(self, norm_scale):
-        super(Res_CBAM, self).__init__()
-
-        self.cbam = CBAM(1024, 512)
-
-        self.final_cov = nn.Conv2d(512, 512, kernel_size=3, padding=1, bias=False)
-        self.instance_norm = InstanceL2Norm(scale=norm_scale)
-
-    def forward(self, x):
-        out = self.instance_norm(self.final_cov(self.cbam(x)))
-        return out
 
 if __name__ == '__main__':
     x = torch.rand(1, 1024, 16, 16)
@@ -604,5 +361,3 @@ if __name__ == '__main__':
     # m = nn.Upsample(scale_factor=1/16, mode='bilinear')
     # a = m(im)
 
-    a = AttFusion(downsample=True)(x)
-    print(a.shape)

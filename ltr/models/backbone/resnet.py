@@ -2,9 +2,15 @@ import math
 import torch.nn as nn
 from collections import OrderedDict
 import torch.utils.model_zoo as model_zoo
-from torchvision.models.resnet import model_urls
+# from torchvision.models.resnet import model_urls  # pytorch 2.0 没有model_urls
 from .base import Backbone
 
+model_urls = {
+    "resnet18": "https://download.pytorch.org/models/resnet18-f37072fd.pth",
+    "resnet34": "https://download.pytorch.org/models/resnet34-b627a593.pth",
+    "resnet50": "https://download.pytorch.org/models/resnet50-0676ba61.pth",
+    "resnet101": "https://download.pytorch.org/models/resnet101-63fe2227.pth",
+}
 
 def conv3x3(in_planes, out_planes, stride=1, dilation=1):
     """3x3 convolution with padding"""

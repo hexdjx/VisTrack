@@ -190,7 +190,7 @@ def fudimp_net_analysis():
     #     # plt.savefig('/home/hexd6/code/Tracking/VisTrack/pytracking/analysis/utils/results/fudimp/feat.png', format='png', dpi=300)
 
 
-def ctp_net_analysis():
+def cat_net_analysis():
     # color target probability
 
     # Visualization of feature map
@@ -228,7 +228,7 @@ def ctp_net_analysis():
 
         img_patch, _ = sample_patch(numpy_to_torch(img), pos.round(), target_scale * sz, sz)
 
-        base_path = os.path.join(os.path.dirname(__file__), 'results/ctp/img/')
+        base_path = os.path.join(os.path.dirname(__file__), 'results/cat/img/')
         if not os.path.isdir(base_path):
             os.makedirs(base_path)
 
@@ -280,11 +280,32 @@ def ctp_net_analysis():
             cv.imwrite(os.path.join(base_path, '{}_{}_{}_feat.png'.format(net_name, sequence, feat_type)),
                        cv.cvtColor(heat_img.astype(np.float32), cv.COLOR_BGR2RGB))
 
+            # count params
+            net = NetWithBackbone(net_path='ProbDiMP.pth.tar', use_gpu=True)  # ProbToMP.pth.tar
+            net.initialize()
+            # special net branch params
+            model = net.net
+
+            # 可训练的参数
+            feature_extractor = model.feature_extractor.parameters()
+            classifier = model.classifier.parameters()
+            bb_regressor = model.bb_regressor.parameters()
+
+            net_params = [feature_extractor, classifier, bb_regressor]
+            total_params = 0
+            for net_params in net_params:
+                params = sum(p.numel() for p in net_params)
+                print("Number of total parameter: %.2fM" % (params / 1e6))
+
+                # total_params += sum(p.numel() for p in net_params)
+            total_params1 = sum(p.numel() for p in model.parameters())
+            # print("Number of total parameter: %.2fM" % (total_params / 1e6))
+            print("Number of total parameter: %.2fM" % (total_params1 / 1e6))
 
 if __name__ == "__main__":
     # rvt_net_analysis()
     # endimp_net_analysis()
     fudimp_net_analysis()
-    # ctp_net_analysis()
+    # cat_net_analysis()
 
     print('done!')

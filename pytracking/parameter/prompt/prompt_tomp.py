@@ -50,11 +50,22 @@ def parameters():
     params.conf_ths = 0.9
     params.search_area_rescaling_at_occlusion = True
 
-    params.net = NetWithBackbone(net_path='ToMP/tomp50.pth.tar', use_gpu=params.use_gpu)
+    params.net = NetWithBackbone(net_path='PrompT/ProToMP_prob.pth.tar', use_gpu=params.use_gpu)
 
     params.vot_anno_conversion_type = 'preserve_area'
 
     params.use_gt_box = True
     params.plot_iou = True
+
+    params.prompt_style = 'prob'
+
+    # params.init_prob = True
+    params.prob_update = True
+    # params.prob_replace = True
+
+    params.use_dist_score = True
+    params.dis_frame_num = 3
+
+    # params.prompt_up = False # pe_mlp pe_att should be set as False
 
     return params

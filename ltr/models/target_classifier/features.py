@@ -4,8 +4,8 @@ import torch.nn.functional as F
 from torchvision.models.resnet import BasicBlock, Bottleneck
 from ltr.models.layers.normalization import InstanceL2Norm
 from ltr.models.layers.transform import InterpCat
-from ltr.models.utils import conv_bn_relu, conv_bn, conv_gn_relu, conv_gn, CBAM
-from ltr.external.PreciseRoIPooling.pytorch.prroi_pool import PrRoIPool2D
+from ltr.models.utils import conv_bn_relu
+from torchvision.ops import RoIAlign
 
 
 def residual_basic_block(feature_dim=256, num_blocks=1, l2norm=True, final_conv=False, norm_scale=1.0, out_dim=None,
@@ -341,6 +341,73 @@ class PE_ATT(nn.Module):
         c_feat = self.clf_conv(feat) * self.c_att(self.pro_conv(pro))
         s_feat = self.clf_conv(feat) * self.s_att(self.pro_conv(pro))
         return self.final_conv(torch.cat((c_feat, s_feat), dim=1))
+
+# for JDTrack use ----------------------------------------------------------------------------
+class SpatialAttention(nn.Module):
+    def __init__(self, channel=512):
+        super().__init__()
+        self.sigmoid = nn.Sigmoid()
+        self.sp_wq = nn.Conv2d(channel, channel // 2, kernel_size=(1, 1))
+        self.sp_wk = nn.Conv2d(channel, channel // 2, kernel_size=(1, 1))
+        self.agp = nn.AdaptiveAvgPool2d((1, 1))
+
+    def forward(self, x):
+        b, c, h, w = x.size()
+        # Spatial-only Self-Attention
+        spatial_wq = self.sp_wq(x)  # bs,c//2,h,w
+        spatial_wk = self.sp_wk(x)  # bs,c//2,h,w
+        spatial_wq = self.agp(spatial_wq)  # bs,c//2,1,1
+        spatial_wk = spatial_wk.reshape(b, c // 2, -1)  # bs,c//2,h*w
+        spatial_wq = spatial_wq.permute(0, 2, 3, 1).reshape(b, 1, c // 2)  # bs,1,c//2
+        spatial_wz = torch.matmul(spatial_wq, spatial_wk)  # bs,1,h*w
+        spatial_weight = self.sigmoid(spatial_wz.reshape(b, 1, h, w))  # bs,1,h,w
+        spatial_out = spatial_weight * x
+        return spatial_out, spatial_weight
+
+class TargetEmbeddingRoiAlign(nn.Module):
+    def __init__(self, pool_size=4, use_conv=False):
+        super().__init__()
+
+        self.roi_align = RoIAlign(pool_size, sampling_ratio=2, spatial_scale=1 / 16)
+        self.use_conv = use_conv
+        if use_conv:
+            self.pool = nn.AdaptiveAvgPool2d((1, 1))
+            self.conv = nn.Conv2d(192, 192, kernel_size=1)
+
+    def forward(self, feat, bb):
+        # Add batch_index to rois
+        batch_size = bb.shape[0]
+        batch_index = torch.arange(batch_size, dtype=torch.float32).reshape(-1, 1).to(bb.device)
+
+        # input bb is in format xywh, convert it to x0y0x1y1 format
+        bb = bb.clone()
+        bb[:, 2:4] = bb[:, 0:2] + bb[:, 2:4]
+        roi = torch.cat((batch_index, bb), dim=1)
+
+        feat = self.roi_align(feat, roi)
+
+        if self.use_conv:
+            return self.conv(self.pool(feat))
+        return feat
+
+
+class AttFusion(nn.Module):
+    def __init__(self, in_channel=768):
+        super(AttFusion, self).__init__()
+        # compute attention weight
+        self.s_att1 = SpatialAttention(channel=in_channel)
+        self.s_att2 = SpatialAttention(channel=in_channel)
+    def forward(self, x):
+        x1, x2 = x[0], x[1]
+        x1_s, w1_s = self.s_att1(x1)
+        x2_s, w2_s = self.s_att2(x2)
+
+        c_w = torch.cat((w1_s, w2_s), dim=1)
+        c_w = F.softmax(c_w, dim=1)
+        # adaptive fusion
+        x_fusion = x1_s * c_w[:, 0:1, :, :] + x2_s * c_w[:, 1:2, :, :]
+
+        return x_fusion
 
 
 if __name__ == '__main__':

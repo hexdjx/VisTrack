@@ -7,7 +7,7 @@ Here is a list of the improved trackers.
 [Models & Raw Results](https://drive.google.com/drive/folders/182NbsBrVR9PICR9aSkb2IhUDvrlSsTDT?usp=sharing) (Google Driver)
 [Models & Raw Results](https://pan.baidu.com/s/1YUp3x0VMFPc2oj_sM24FrA?pwd=VisT) (Baidu Driver: VisT)
 
-* JDTrack: High-Performance Discriminative Tracking with Spatio-Temporal Template Fusion, ACM MM, 2025. 
+* JDTrack: High-Performance Discriminative Tracking with Spatio-Temporal Template Fusion, ACM MM, 2025. [[Paper]](https://doi.org/10.1145/3746027.3755721)
 * PrompT: Learning Color Prompt and Position Constraint for Visual Tracking, Engineering Applications of Artificial Intelligence, 2025. [[Paper]](https://doi.org/10.1016/j.engappai.2025.111415)
 * CAT: Color Attention Tracking with Score Matching, International Journal of Machine Learning and Cybernetics, 2024. [[Paper]](https://www.doi.org/10.1007/s13042-024-02316-y)
 * FuDiMP: Attention Fusion and Target-Uncertain Detection for Discriminative Tracking, Knowledge-Based Systems, 2023. [[Paper]](https://doi.org/10.1016/j.knosys.2023.110860)
